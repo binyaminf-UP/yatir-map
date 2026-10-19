@@ -65,7 +65,8 @@ def point_of(pm):
 
 
 def main() -> None:
-    map_id = os.environ.get("MAP_ID", "").strip()
+    # משאירים רק תווים חוקיים במזהה (מסנן BOM ותווים נסתרים שנכנסים בהעתקה)
+    map_id = re.sub(r"[^A-Za-z0-9_-]", "", os.environ.get("MAP_ID", ""))
     layers = {clean(x) for x in os.environ.get("LAYERS", "").split("|") if x.strip()}
     if not map_id:
         fail("חסר MAP_ID")
