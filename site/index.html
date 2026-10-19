@@ -232,8 +232,8 @@ function prepare(data) {
   return (data.items || []).map((it, i) => ({
     id: i,
     name: it.n || '(ללא שם)',
-    loc: it.l || '',
-    cluster: it.c || '',
+    loc: it.l == null ? '' : String(it.l),
+    cluster: it.c == null ? '' : String(it.c),
     point: (typeof it.lat === 'number' && typeof it.lon === 'number') ? { lat: it.lat, lon: it.lon } : null,
     nName: norm(it.n),
     hay: norm([it.n, it.l, it.c ? 'אשכול ' + it.c : ''].join(' ')),
@@ -252,6 +252,8 @@ function search(q) {
       if (p.loc === nq) score = 100;
       else if (p.loc.startsWith(nq)) score = 70;
       else if (p.cluster === nq) score = 30;
+      else if (new RegExp('(^| )' + nq + '( |$)').test(p.nName)) score = 25;
+      else if (p.loc.includes(nq)) score = 15;
     } else if (tokens.every(t => p.hay.includes(t))) {
       score = 40;
       if (p.nName.startsWith(nq)) score = 80;
@@ -265,14 +267,26 @@ function search(q) {
   return out.map(o => o.p);
 }
 
+// הדגשה: מחפשים בטקסט המקורי (לא אחרי esc), עם התאמה בין אותיות סופיות לרגילות ודילוג על ניקוד
+const EQUIV = { 'כ': '[כך]', 'מ': '[מם]', 'נ': '[נן]', 'פ': '[פף]', 'צ': '[צץ]' };
+function tokenPattern(t) {
+  return Array.from(t)
+    .map(ch => EQUIV[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('[\\u0591-\\u05C7\\u200e\\u200f]*');
+}
 function highlight(text, q) {
-  let out = esc(text);
-  const tokens = norm(q).split(' ').filter(t => t.length > 1 || /\d/.test(t));
-  for (const t of tokens) {
-    const re = new RegExp('(' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-    out = out.replace(re, '<mark>$1</mark>');
+  text = String(text);
+  const tokens = norm(q).split(' ')
+    .filter(t => t.length > 1 || /\d/.test(t))
+    .sort((a, b) => b.length - a.length);
+  if (!tokens.length) return esc(text);
+  const re = new RegExp(tokens.map(tokenPattern).join('|'), 'gi');
+  let out = '', last = 0;
+  for (const m of text.matchAll(re)) {
+    out += esc(text.slice(last, m.index)) + '<mark>' + esc(m[0]) + '</mark>';
+    last = m.index + m[0].length;
   }
-  return out;
+  return out + esc(text.slice(last));
 }
 
 function card(p, q) {
