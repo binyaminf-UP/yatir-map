@@ -1,0 +1,74 @@
+name: עדכון מהמפה ופרסום האתר
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # בדיקת שינויים במפה כל 15 דקות
+    - cron: "17 3 * * 0"     # פעם בשבוע: מונע מ-GitHub לכבות את התזמון אחרי 60 יום ללא פעילות
+  workflow_dispatch:          # הפעלה ידנית: Actions ← Run workflow
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  actions: write
+
+concurrency:
+  group: site
+  cancel-in-progress: false
+
+env:
+  # השכבות היחידות שיוצאות מהמפה לאתר. כמה שכבות – מפרידים ב-|
+  LAYERS: "טבלת היפוך שם ומס איתור"
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: הורדת המפה וסינון
+        env:
+          MAP_ID: ${{ secrets.MAP_ID }}
+        run: python3 scripts/build_data.py
+
+      - name: שמירה אם יש שינוי
+        id: commit
+        run: |
+          if [ -z "$(git status --porcelain -- site/data)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add site/data
+            git commit -m "עדכון נתונים מהמפה"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: שמירת התזמון בחיים
+        if: github.event.schedule == '17 3 * * 0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/site.yml/enable"
+
+  deploy:
+    needs: update
+    if: needs.update.outputs.changed == 'true' || github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v5
