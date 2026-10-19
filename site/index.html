@@ -293,6 +293,13 @@ function norm(s) {
     .trim()
     .toLowerCase();
 }
+// שלד: בלי אהו"י, ק=כ, ט=ת (אחרי norm). 'שלו' = 'שליו' = 'שולו', 'יעקבי' = 'יעקובי'
+function skelWord(w) {
+  const t = w.replace(/ק/g, 'כ').replace(/ט/g, 'ת');
+  const s = t.replace(/[אהוי]/g, '');
+  return s.length >= 2 ? s : t;
+}
+function skel(s) { return norm(s).split(' ').map(skelWord).join(' '); }
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -318,7 +325,9 @@ function prepare(data) {
     nm: it.nm || '', nw: it.nw || '',
     phones: [it.pm, it.pw, it.ph].filter(Boolean).join(' '),
     nName: norm(it.n),
+    sName: skel(it.n),
     hay: norm([it.n, it.l, it.c ? 'אשכול ' + it.c : ''].join(' ')),
+    sHay: skel(it.n),
   }));
 }
 
@@ -327,6 +336,8 @@ function search(q) {
   if (!nq) return [];
   const tokens = nq.split(' ');
   const isNum = /^\d+$/.test(nq);
+  const sq = nq.split(' ').map(skelWord).join(' ');
+  const sTokens = nq.replace(/\d/g, '').trim().length >= 2 ? sq.split(' ').filter(Boolean) : [];
   const out = [];
   for (const p of places) {
     let score = 0;
@@ -341,6 +352,9 @@ function search(q) {
       score = 40;
       if (p.nName.startsWith(nq)) score = 80;
       else if (new RegExp('(^| )' + nq.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(p.nName)) score = 65;
+    } else if (sTokens.length && sTokens.every(t => p.sHay.includes(t))) {
+      // התאמה בלי אהו"י – בעדיפות נמוכה מהתאמה מדויקת
+      score = p.sName.startsWith(sq) ? 60 : 35;
     }
     if (score) out.push({ p, score });
   }
@@ -357,13 +371,22 @@ function tokenPattern(t) {
     .map(ch => EQUIV[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('[\\u0591-\\u05C7\\u200e\\u200f]*');
 }
+const LOOSE = { 'כ': '[כךק]', 'ת': '[תט]', 'מ': '[מם]', 'נ': '[נן]', 'פ': '[פף]', 'צ': '[צץ]' };
+function loosePattern(t) {
+  const sk = skelWord(t);
+  if (sk.length < 2 || /\d/.test(sk)) return null;
+  return '[אהוי]*' + Array.from(sk)
+    .map(ch => LOOSE[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('[אהוי\\u0591-\\u05C7\\u200e\\u200f]*') + '[אהוי]*';
+}
 function highlight(text, q) {
   text = String(text);
   const tokens = norm(q).split(' ')
     .filter(t => t.length > 1 || /\d/.test(t))
     .sort((a, b) => b.length - a.length);
   if (!tokens.length) return esc(text);
-  const re = new RegExp(tokens.map(tokenPattern).join('|'), 'gi');
+  const pats = tokens.map(tokenPattern).concat(tokens.map(loosePattern).filter(Boolean));
+  const re = new RegExp(pats.join('|'), 'gi');
   let out = '', last = 0;
   for (const m of text.matchAll(re)) {
     out += esc(text.slice(last, m.index)) + '<mark>' + esc(m[0]) + '</mark>';

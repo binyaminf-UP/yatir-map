@@ -198,7 +198,7 @@ def load_phones(raw: bytes) -> list:
 
 def match_tokens(s: str) -> list:
     """מילים להשוואה: מפרקים מקפים וסוגריים, מורידים ו' החיבור ותארים.
-    'בן- גדליהו צבי ודבי' ו-'בן גדליהו צבי ודבי' נותנים אותו דבר."""
+    מחזיר זוגות (מילה מנורמלת, שלד). 'בן- גדליהו צבי ודבי' = 'בן גדליהו צבי ודבי'."""
     s = re.sub(r"[()\"'׳״]", " ", clean(s)).replace("–", "-")
     out = []
     for i, t in enumerate(re.split(r"[\s\-]+", s)):
@@ -208,8 +208,38 @@ def match_tokens(s: str) -> list:
             t = t[1:]
         elif i > 0 and t.startswith("ו") and len(t) > 2:
             t = t[1:]
-        out.append(t)
+        t = t.translate(FINALS_MAP)
+        out.append((t, skeleton(t)))
     return out
+
+
+FINALS_MAP = str.maketrans("ךםןףץ", "כמנפצ")
+SKEL_MAP = str.maketrans({"ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ", "ק": "כ", "ט": "ת"})
+
+
+def skeleton(t: str) -> str:
+    """שלד לשם: בלי אהו"י, ק=כ, ט=ת, סופיות כרגילות.
+    כך 'שלו'='שליו', 'יעקבי'='יעקובי', 'רבלין'='ריבלין', 'קליפה'='כליפה'."""
+    t = t.translate(SKEL_MAP)
+    s = re.sub(r"[אהוי]", "", t)
+    return s if len(s) >= 2 else t
+
+
+def common_tokens(mt: list, pt: list):
+    """סופר מילים משותפות. מילה זהה – תמיד נספרת. התאמה לפי שלד בלבד נספרת רק אם השלד
+    באורך 3 ומעלה, או ששתיהן המילה הראשונה (שם המשפחה) – כדי ש'בן'/'הבן' או 'חן'/'אוחנה'
+    לא ייצרו התאמות שגויות."""
+    used, mi, pj = set(), set(), set()
+    for i, (mw, ms) in enumerate(mt):
+        for j, (pw, ps) in enumerate(pt):
+            if j in used:
+                continue
+            if mw == pw or (ms == ps and (len(ms) >= 3 or (i == 0 and j == 0))):
+                used.add(j)
+                mi.add(i)
+                pj.add(j)
+                break
+    return len(mi), (0 in mi or 0 in pj)
 
 
 def attach_phones(items: list, phones: list):
@@ -226,19 +256,15 @@ def attach_phones(items: list, phones: list):
         for idx, pt in enumerate(ptoks):
             if not pt:
                 continue
-            common = set(mt) & set(pt)
-            if len(common) < 2 or not (mt[0] in common or pt[0] in common):
+            n_common, has_first = common_tokens(mt, pt)
+            if n_common < 2 or not has_first:
                 continue
-            score = len(common) * 10 - abs(len(mt) - len(pt))
+            score = n_common * 10 - abs(len(mt) - len(pt))
             if score > best_score:
                 best, best_score = idx, score
         if best is not None:
-            p = dict(phones[best])
+            p = phones[best]
             used.add(best)
-            # בגיליון לפעמים האישה כתובה ראשונה ("שמש רננה ויונתן"). הטלפונים לפי העמודות נכונים,
-            # אבל השמות לכפתורים נקבעים לפי הסדר. אם במפה הסדר הפוך – סומכים על המפה (גבר ראשון).
-            if p["nm"] != p["nw"] and p["nm"] in mt and p["nw"] in mt and mt.index(p["nw"]) < mt.index(p["nm"]):
-                p["nm"], p["nw"] = p["nw"], p["nm"]
             for k in ("pm", "pw", "ph", "nm", "nw"):
                 if p[k]:
                     it[k] = p[k]
