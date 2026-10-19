@@ -2,7 +2,7 @@ name: עדכון מהמפה ופרסום האתר
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # בדיקת שינויים במפה כל 15 דקות
+    - cron: "*/15 * * * *"   # בדיקת שינויים במפה ובגיליון כל 15 דקות
     - cron: "17 3 * * 0"     # פעם בשבוע: מונע מ-GitHub לכבות את התזמון אחרי 60 יום ללא פעילות
   workflow_dispatch:          # הפעלה ידנית: Actions ← Run workflow
   push:
@@ -26,28 +26,49 @@ jobs:
   update:
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.commit.outputs.changed }}
+      deploy: ${{ steps.decide.outputs.deploy }}
     steps:
       - uses: actions/checkout@v7
 
-      - name: הורדת המפה וסינון
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: התקנת ספריית הצפנה
+        run: python -m pip install --quiet cryptography
+
+      - name: הורדה, סינון והצפנה
+        id: build
         env:
           MAP_ID: ${{ secrets.MAP_ID }}
-        run: python3 scripts/build_data.py
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          SHEET_GID: ${{ secrets.SHEET_GID }}
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+        run: python scripts/build_data.py
 
-      - name: שמירה אם יש שינוי
-        id: commit
+      - name: שמירת טביעת האצבע אם יש שינוי
+        if: steps.build.outputs.changed == 'true'
         run: |
-          if [ -z "$(git status --porcelain -- site/data)" ]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .state
+          git commit -m "עדכון נתונים"
+          git push
+
+      - name: האם לפרסם
+        id: decide
+        run: |
+          if [ "${{ steps.build.outputs.changed }}" = "true" ] || [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
           else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add site/data
-            git commit -m "עדכון נתונים מהמפה"
-            git push
-            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: הכנת האתר לפרסום
+        if: steps.decide.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
 
       - name: שמירת התזמון בחיים
         if: github.event.schedule == '17 3 * * 0'
@@ -57,18 +78,11 @@ jobs:
 
   deploy:
     needs: update
-    if: needs.update.outputs.changed == 'true' || github.event_name != 'schedule'
+    if: needs.update.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: main
-      - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: site
       - id: deployment
         uses: actions/deploy-pages@v5

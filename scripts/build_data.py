@@ -1,25 +1,39 @@
 #!/usr/bin/env python3
 """
-מוריד את ה-KML של מפת Google My Maps, שולף רק את השכבות המאושרות,
-ושומר קובץ JSON מצומצם (שם, מספר איתור, אשכול, קואורדינטות) לאתר.
+בונה את קובץ הנתונים המוצפן של האתר:
+1. מוריד את ה-KML של מפת My Maps ושולף רק את השכבות המאושרות (שם, איתור, אשכול, מיקום).
+2. מוריד את לשונית "טלפונים" מהגיליון ומצמיד טלפונים לכל משפחה.
+3. מצפין הכול בסיסמה (AES-GCM, מפתח מ-PBKDF2) – באתר יושב רק קובץ מוצפן.
 
-שכבות אחרות במפה, תיאורים חופשיים וכל מידע נוסף – לא נשמרים.
-מזהה המפה מגיע ממשתנה סביבה (Secret ב-GitHub) ואינו מודפס ליומן.
+שום נתון גלוי לא נשמר במאגר. נשמר רק טביעת אצבע (hash) כדי לדעת אם משהו השתנה.
+מזהי המפה והגיליון והסיסמה מגיעים ממשתני סביבה (Secrets) ואינם מודפסים ליומן.
+
+לבדיקה מקומית: KML_FILE / CSV_FILE במקום הורדה.
 """
+import base64
+import csv
+import hashlib
+import io
 import json
 import os
 import re
 import sys
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
-OUT = Path(__file__).resolve().parent.parent / "site" / "data" / "residents.json"
-BIDI = re.compile(r"[‎‏‪-‮⁦-⁩]")
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / "site" / "data" / "data.enc.json"
+STATE = ROOT / ".state" / "data.sha256"
+ITERATIONS = 250_000
+
+BIDI = re.compile(r"[‎‏‪-‮⁦-⁩֑-ׇ]")
 TAGS = re.compile(r"<[^>]+>")
 RE_LOC = re.compile(r"איתור\s*:?\s*(\d+)")
 RE_CLUSTER = re.compile(r"אשכול\s*:?\s*(\d+)")
+TITLES = {"הרב", "ד\"ר", "דר"}
 
 
 def fail(msg: str) -> None:
@@ -33,6 +47,21 @@ def clean(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def ident(env: str) -> str:
+    # משאירים רק תווים חוקיים במזהה (מסנן BOM ותווים נסתרים שנכנסים בהעתקה)
+    return re.sub(r"[^A-Za-z0-9_-]", "", os.environ.get(env, ""))
+
+
+def fetch(url: str, what: str) -> bytes:
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return r.read()
+    except Exception as e:  # noqa: BLE001
+        fail(f"הורדת {what} נכשלה ({type(e).__name__}) – בדקו שהשיתוף בקישור פעיל")
+
+
+# ---------------- מפה ----------------
 def local(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
@@ -58,35 +87,17 @@ def point_of(pm):
                 return None
             if len(pts) > 2 and pts[0] == pts[-1]:
                 pts = pts[:-1]
-            lat = sum(p[0] for p in pts) / len(pts)
-            lon = sum(p[1] for p in pts) / len(pts)
-            return round(lat, 6), round(lon, 6)
+            return (round(sum(p[0] for p in pts) / len(pts), 6),
+                    round(sum(p[1] for p in pts) / len(pts), 6))
     return None
 
 
-def main() -> None:
-    # משאירים רק תווים חוקיים במזהה (מסנן BOM ותווים נסתרים שנכנסים בהעתקה)
-    map_id = re.sub(r"[^A-Za-z0-9_-]", "", os.environ.get("MAP_ID", ""))
-    layers = {clean(x) for x in os.environ.get("LAYERS", "").split("|") if x.strip()}
-    if not map_id:
-        fail("חסר MAP_ID")
-    if not layers:
-        fail("חסרה רשימת שכבות (LAYERS)")
-
-    url = f"https://www.google.com/maps/d/kml?forcekml=1&mid={map_id}"
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=60) as r:
-            raw = r.read()
-    except Exception as e:  # noqa: BLE001
-        fail(f"הורדת המפה נכשלה ({type(e).__name__}) – בדקו שהמפה משותפת בקישור")
-
+def load_map(raw: bytes, layers: set) -> list:
     try:
         root = ET.fromstring(raw)
     except ET.ParseError:
-        fail("התקבל קובץ שאינו KML – ייתכן שהמפה אינה משותפת")
-
-    items, found_layers = [], set()
+        fail("התקבל קובץ מפה שאינו KML – ייתכן שהמפה אינה משותפת")
+    items, found = [], set()
     for folder in root.iter():
         if local(folder.tag) != "Folder":
             continue
@@ -94,7 +105,7 @@ def main() -> None:
         fname = clean(name_el.text if name_el is not None else "")
         if fname not in layers:
             continue
-        found_layers.add(fname)
+        found.add(fname)
         for pm in folder:
             if local(pm.tag) != "Placemark":
                 continue
@@ -113,34 +124,205 @@ def main() -> None:
                 "lat": pt[0] if pt else None,
                 "lon": pt[1] if pt else None,
             })
-
-    missing = layers - found_layers
+    missing = layers - found
     if missing:
         fail(f"שכבות לא נמצאו במפה: {', '.join(sorted(missing))}")
     if not items:
         fail("לא נמצאו רשומות בשכבות המאושרות")
+    return items
+
+
+# ---------------- טלפונים ----------------
+def norm_phone(s: str, home: bool = False) -> str:
+    d = re.sub(r"\D", "", s or "")
+    if d.startswith("972"):
+        d = "0" + d[3:]
+    if len(d) == 9 and d[0] == "5":          # נייד שאיבד את ה-0
+        d = "0" + d
+    if home and len(d) == 7:                 # קווי בלי קידומת – באזור 02
+        d = "02" + d
+    return d if 9 <= len(d) <= 10 else ""
+
+
+def name_tokens(s: str) -> list:
+    s = clean(s).replace("–", "-")
+    s = re.sub(r"\s*-\s*", "-", s)
+    return [t for t in s.split(" ") if t and t not in TITLES]
+
+
+def split_family(s: str):
+    """'פרנקל בנימין ומיכל' -> ('פרנקל', ['בנימין', 'מיכל'])"""
+    toks = name_tokens(s)
+    if not toks:
+        return "", []
+    given = [t[1:] if (i > 0 and t.startswith("ו") and len(t) > 2) else t
+             for i, t in enumerate(toks[1:])]
+    return toks[0], given
+
+
+def load_phones(raw: bytes) -> list:
+    text = raw.decode("utf-8-sig", errors="replace")
+    if text.lstrip().startswith("<"):
+        fail("התקבל דף HTML במקום הגיליון – ייתכן שהגיליון אינו משותף")
+    rows = list(csv.reader(io.StringIO(text)))
+    header = None
+    for i, r in enumerate(rows):
+        cells = [clean(c) for c in r]
+        if cells and cells[0].startswith("משפחה") and "איש" in cells and "אישה" in cells:
+            header = i
+            col = {name: cells.index(name) for name in ("בית", "איש", "אישה")}
+            break
+    if header is None:
+        fail('לא נמצאה שורת כותרת ("משפחה, בית, איש, אישה") בלשונית הטלפונים')
+
+    out = []
+    for r in rows[header + 1:]:
+        if not r or not clean(r[0]):
+            continue
+        get = lambda k: r[col[k]] if col[k] < len(r) else ""  # noqa: E731
+        fam = clean(r[0])
+        surname, given = split_family(fam)
+        man, woman, home = norm_phone(get("איש")), norm_phone(get("אישה")), norm_phone(get("בית"), home=True)
+        if not (man or woman or home):
+            continue
+        if len(given) >= 2:
+            nm, nw = given[-2], given[-1]
+        elif len(given) == 1:
+            nm = nw = given[0]
+        else:
+            nm = nw = ""
+        out.append({"fam": fam, "surname": surname, "given": set(given),
+                    "pm": man, "pw": woman, "ph": home, "nm": nm, "nw": nw})
+    return out
+
+
+def match_tokens(s: str) -> list:
+    """מילים להשוואה: מפרקים מקפים וסוגריים, מורידים ו' החיבור ותארים.
+    'בן- גדליהו צבי ודבי' ו-'בן גדליהו צבי ודבי' נותנים אותו דבר."""
+    s = re.sub(r"[()\"'׳״]", " ", clean(s)).replace("–", "-")
+    out = []
+    for i, t in enumerate(re.split(r"[\s\-]+", s)):
+        if not t or t in TITLES:
+            continue
+        if t.startswith("וו"):                       # וורך / ורך
+            t = t[1:]
+        elif i > 0 and t.startswith("ו") and len(t) > 2:
+            t = t[1:]
+        out.append(t)
+    return out
+
+
+def attach_phones(items: list, phones: list):
+    """מצמיד לכל רשומת מפה את שורת הטלפונים המתאימה.
+    התאמה = לפחות שתי מילים משותפות, ואחת מהן היא המילה הראשונה (שם המשפחה) באחד הצדדים.
+    כך 'רפאל אבי ובתיה' מתאים ל-'בזיז-רפאל אבי בתיה', אבל 'לוין יוסף' לא מתאים ל-'לוין צבי'."""
+    ptoks = [match_tokens(p["fam"]) for p in phones]
+    used = set()
+    for it in items:
+        mt = match_tokens(it["n"])
+        if not mt:
+            continue
+        best, best_score = None, 0
+        for idx, pt in enumerate(ptoks):
+            if not pt:
+                continue
+            common = set(mt) & set(pt)
+            if len(common) < 2 or not (mt[0] in common or pt[0] in common):
+                continue
+            score = len(common) * 10 - abs(len(mt) - len(pt))
+            if score > best_score:
+                best, best_score = idx, score
+        if best is not None:
+            p = dict(phones[best])
+            used.add(best)
+            # בגיליון לפעמים האישה כתובה ראשונה ("שמש רננה ויונתן"). הטלפונים לפי העמודות נכונים,
+            # אבל השמות לכפתורים נקבעים לפי הסדר. אם במפה הסדר הפוך – סומכים על המפה (גבר ראשון).
+            if p["nm"] != p["nw"] and p["nm"] in mt and p["nw"] in mt and mt.index(p["nw"]) < mt.index(p["nm"]):
+                p["nm"], p["nw"] = p["nw"], p["nm"]
+            for k in ("pm", "pw", "ph", "nm", "nw"):
+                if p[k]:
+                    it[k] = p[k]
+    # משפחות שיש להן טלפון אבל אין להן נקודה במפה – נכנסות לחיפוש בלי מיקום
+    extra = []
+    for idx, p in enumerate(phones):
+        if idx in used:
+            continue
+        rec = {"n": p["fam"], "l": "", "c": "", "lat": None, "lon": None}
+        for k in ("pm", "pw", "ph", "nm", "nw"):
+            if p[k]:
+                rec[k] = p[k]
+        extra.append(rec)
+    return len(used), extra
+
+
+# ---------------- הצפנה ----------------
+def encrypt(payload: bytes, password: str) -> dict:
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+    salt, iv = os.urandom(16), os.urandom(12)
+    key = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt,
+                     iterations=ITERATIONS).derive(password.encode("utf-8"))
+    ct = AESGCM(key).encrypt(iv, payload, None)
+    b64 = lambda b: base64.b64encode(b).decode("ascii")  # noqa: E731
+    return {"v": 1, "kdf": "PBKDF2-SHA256", "iter": ITERATIONS,
+            "salt": b64(salt), "iv": b64(iv), "ct": b64(ct)}
+
+
+def main() -> None:
+    layers = {clean(x) for x in os.environ.get("LAYERS", "").split("|") if x.strip()}
+    # אותו נרמול כמו בדפדפן: בלי רווחים ותווים נסתרים, ואותיות סופיות כרגילות
+    password = re.sub(r"[\s﻿‎‏]", "", os.environ.get("SITE_PASSWORD", ""))
+    password = password.translate(str.maketrans("ךםןףץ", "כמנפצ"))
+    if not layers:
+        fail("חסרה רשימת שכבות (LAYERS)")
+    if not password:
+        fail("חסרה סיסמה (SITE_PASSWORD)")
+
+    if os.environ.get("KML_FILE"):
+        kml = Path(os.environ["KML_FILE"]).read_bytes()
+    else:
+        map_id = ident("MAP_ID") or fail("חסר MAP_ID")
+        kml = fetch(f"https://www.google.com/maps/d/kml?forcekml=1&mid={map_id}", "המפה")
+    items = load_map(kml, layers)
+
+    matched, extra, n_phones = 0, [], 0
+    if os.environ.get("CSV_FILE"):
+        csv_raw = Path(os.environ["CSV_FILE"]).read_bytes()
+    elif ident("SHEET_ID"):
+        sheet, gid = ident("SHEET_ID"), ident("SHEET_GID") or "0"
+        csv_raw = fetch(f"https://docs.google.com/spreadsheets/d/{sheet}/export?format=csv&gid={gid}", "הגיליון")
+    else:
+        csv_raw = None
+    if csv_raw is not None:
+        phones = load_phones(csv_raw)
+        n_phones = len(phones)
+        matched, extra = attach_phones(items, phones)
+        items += extra
 
     items.sort(key=lambda x: (int(x["l"]) if x["l"] else 10**9, x["n"]))
+    plain = json.dumps({"items": items}, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    digest = hashlib.sha256(plain).hexdigest()
 
-    old_items = None
-    if OUT.exists():
-        try:
-            old_items = json.loads(OUT.read_text(encoding="utf-8")).get("items")
-        except (ValueError, OSError):
-            pass
-    if old_items == items:
-        print(f"אין שינוי ({len(items)} רשומות)")
-        return
-
+    # הקובץ המוצפן נוצר תמיד (לפרסום), אבל טביעת האצבע קובעת אם יש שינוי
+    data = {"updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+    data.update(encrypt(plain, password))
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    data = {
-        "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "count": len(items),
-        "items": items,
-    }
-    OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    print(f"עודכן: {len(items)} רשומות"
-          + (f" (היו {len(old_items)})" if old_items is not None else ""))
+    OUT.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
+
+    old = STATE.read_text().strip() if STATE.exists() else ""
+    changed = old != digest
+    if changed:
+        STATE.parent.mkdir(parents=True, exist_ok=True)
+        STATE.write_text(digest + "\n")
+    print(f"רשומות במפה: {len(items) - len(extra)} | שורות טלפונים: {n_phones} | "
+          f"הותאמו: {matched} | נוספו ללא מיקום: {len(extra)} | "
+          f"{'יש שינוי' if changed else 'אין שינוי'}")
+    gh_out = os.environ.get("GITHUB_OUTPUT")
+    if gh_out:
+        with open(gh_out, "a", encoding="utf-8") as f:
+            f.write(f"changed={'true' if changed else 'false'}\n")
 
 
 if __name__ == "__main__":

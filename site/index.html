@@ -165,6 +165,71 @@
   .nocoords { margin-top: 12px; font-size: 1rem; color: var(--muted); }
   .more { text-align: center; color: var(--muted); font-size: 1rem; }
   mark { background: var(--accent-soft); color: inherit; border-radius: 3px; }
+  .phones { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .tel {
+    flex: 1 1 0;
+    min-width: 96px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 10px 8px;
+    border-radius: 14px;
+    border: 2px solid var(--call);
+    color: var(--call);
+    background: var(--surface);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1.2;
+  }
+  .tel span { display: inline-flex; align-items: center; gap: 6px; }
+  .tel svg { width: 20px; height: 20px; fill: currentColor; flex: none; }
+  .tel small { font-weight: 400; font-size: .85rem; color: var(--muted); direction: ltr; }
+  /* מסך סיסמה */
+  #gate {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  #gate[hidden] { display: none; }
+  .gate-box { width: 100%; max-width: 420px; text-align: center; }
+  .gate-box h2 { font-size: 1.5rem; margin: 0 0 6px; }
+  .gate-box p { color: var(--muted); margin: 0 0 18px; }
+  #pw {
+    width: 100%;
+    font: inherit;
+    font-size: 1.4rem;
+    text-align: center;
+    padding: 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+  }
+  #pw:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  #pwGo {
+    width: 100%;
+    margin-top: 12px;
+    padding: 15px;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: var(--bg);
+    font: inherit;
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #pwGo:disabled { opacity: .6; }
+  #pwMsg { min-height: 1.5em; margin-top: 10px; color: var(--danger); }
 </style>
 </head>
 <body>
@@ -178,7 +243,7 @@
       </a>
     </div>
     <div class="search">
-      <input id="q" type="search" placeholder="איתור או שם משפחה" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="חיפוש" autofocus>
+      <input id="q" type="search" placeholder="איתור, שם או טלפון" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="חיפוש" autofocus>
       <div class="tools">
         <button id="clear" class="tool" type="button" aria-label="ניקוי">×</button>
         <button id="mic" class="tool" type="button" aria-label="חיפוש בקול" hidden>
@@ -191,10 +256,24 @@
 </header>
 <main class="wrap" id="results"><p class="hint">טוען נתונים…</p></main>
 
+<section id="gate" hidden>
+  <form class="gate-box" id="gateForm" autocomplete="off">
+    <h2>איתור בבית יתיר</h2>
+    <p>הכניסה לתושבים בלבד. הזינו את הסיסמה הקהילתית.</p>
+    <input id="pw" type="text" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="סיסמה" aria-label="סיסמה">
+    <button id="pwGo" type="submit">כניסה</button>
+    <div id="pwMsg" role="alert"></div>
+  </form>
+</section>
+
 <script>
-const DATA_URL = 'data/residents.json';
+const DATA_URL = 'data/data.enc.json';
 const MAX_RESULTS = 30;
-const CACHE_KEY = 'yatir-residents-v1';
+const CACHE_KEY = 'yatir-enc-v1';          // הקובץ המוצפן (בטוח לשמור)
+const PASS_KEY = 'yatir-pass-v1';          // הסיסמה + מועד הזנה
+const PASS_TTL = 60 * 24 * 3600 * 1000;    // חודשיים
+const ICON_PHONE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25c1.1.37 2.3.57 3.6.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg>';
+const ICON_HOME = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 12h3v8h5v-6h4v6h5v-8h3z"/></svg>';
 
 let places = [];
 let lastUpdated = '';
@@ -235,6 +314,9 @@ function prepare(data) {
     loc: it.l == null ? '' : String(it.l),
     cluster: it.c == null ? '' : String(it.c),
     point: (typeof it.lat === 'number' && typeof it.lon === 'number') ? { lat: it.lat, lon: it.lon } : null,
+    pm: it.pm || '', pw: it.pw || '', ph: it.ph || '',
+    nm: it.nm || '', nw: it.nw || '',
+    phones: [it.pm, it.pw, it.ph].filter(Boolean).join(' '),
     nName: norm(it.n),
     hay: norm([it.n, it.l, it.c ? 'אשכול ' + it.c : ''].join(' ')),
   }));
@@ -253,6 +335,7 @@ function search(q) {
       else if (p.loc.startsWith(nq)) score = 70;
       else if (p.cluster === nq) score = 30;
       else if (new RegExp('(^| )' + nq + '( |$)').test(p.nName)) score = 25;
+      else if (nq.length >= 5 && p.phones.includes(nq.replace(/^972/, '0'))) score = 50;
       else if (p.loc.includes(nq)) score = 15;
     } else if (tokens.every(t => p.hay.includes(t))) {
       score = 40;
@@ -299,6 +382,10 @@ function card(p, q) {
       <button class="btn btn-share" type="button" data-share="${p.id}" aria-label="שיתוף מיקום">שיתוף</button>
     </div>`;
   }
+  const tels = [];
+  if (p.pm) tels.push(telBtn(p.pm, ICON_PHONE, p.nm || 'איש'));
+  if (p.pw) tels.push(telBtn(p.pw, ICON_PHONE, p.nw || 'אישה'));
+  if (p.ph) tels.push(telBtn(p.ph, ICON_HOME, 'בית'));
   return `<article class="card">
     <div class="card-head">
       ${p.loc ? `<div class="loc"><small>איתור</small><b>${highlight(p.loc, q)}</b></div>` : ''}
@@ -308,7 +395,19 @@ function card(p, q) {
       </div>
     </div>
     ${actions}
+    ${tels.length ? `<div class="phones">${tels.join('')}</div>` : ''}
   </article>`;
+}
+
+function fmtPhone(d) {
+  if (/^05\d{8}$/.test(d) || /^07\d{8}$/.test(d)) return d.slice(0, 3) + '-' + d.slice(3);
+  if (/^0[2-489]\d{7}$/.test(d)) return d.slice(0, 2) + '-' + d.slice(2);
+  return d;
+}
+function telBtn(num, icon, label) {
+  const intl = '+972' + num.replace(/^0/, '');
+  return `<a class="tel" href="tel:${intl}" aria-label="התקשרות ל${esc(label)}, ${fmtPhone(num)}">
+    <span>${icon}${esc(label)}</span><small>${fmtPhone(num)}</small></a>`;
 }
 
 function render() {
@@ -316,7 +415,7 @@ function render() {
   $clear.classList.toggle('show', !!q);
   if (!places.length) return;
   if (!norm(q)) {
-    $results.innerHTML = '<p class="hint">הקלידו מספר איתור או שם משפחה'
+    $results.innerHTML = '<p class="hint">הקלידו מספר איתור, שם משפחה או מספר טלפון'
       + ($mic.hidden ? '' : '<br>או לחצו על המיקרופון ואמרו "איתור 8854"') + '</p>';
     return;
   }
@@ -369,10 +468,14 @@ $q.addEventListener('keydown', e => { if (e.key === 'Enter') $q.blur(); });
 /* ---------- פוקוס אוטומטי ----------
    הדפדפנים בטלפון לא פותחים מקלדת בלי נגיעה של המשתמש.
    לכן: הסמן מוכן בשדה, ונגיעה בכל מקום ריק בכותרת או במסך הפתיחה פותחת את המקלדת. */
-function focusSearch() { try { $q.focus({ preventScroll: true }); } catch (_) { $q.focus(); } }
+function focusSearch() {
+  const g = document.getElementById('gate');
+  const el = (g && !g.hidden) ? document.getElementById('pw') : $q;
+  try { el.focus({ preventScroll: true }); } catch (_) { el.focus(); }
+}
 window.addEventListener('pageshow', focusSearch);
 document.addEventListener('click', e => {
-  if (e.target.closest('a, button, input, .card')) return;
+  if (e.target.closest('a, button, input, .card, #gate')) return;
   focusSearch();
 });
 
@@ -428,12 +531,80 @@ if (SR) {
   });
 }
 
-/* ---------- טעינה ---------- */
+/* ---------- טעינה, סיסמה ופענוח ---------- */
+const $gate = document.getElementById('gate');
+const $gateForm = document.getElementById('gateForm');
+const $pw = document.getElementById('pw');
+const $pwGo = document.getElementById('pwGo');
+const $pwMsg = document.getElementById('pwMsg');
+let enc = null;
+
 function loadCache() {
   try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch (_) { return null; }
 }
 function saveCache(data) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch (_) {}
+}
+// סיסמה סלחנית: בלי רווחים, ואותיות סופיות כרגילות ("עין טובה" = "עינטובה")
+function normPass(s) {
+  return String(s || '').replace(/\s+/g, '').replace(/[ךםןףץ]/g, c => FINALS[c]);
+}
+function getSavedPass() {
+  try {
+    const o = JSON.parse(localStorage.getItem(PASS_KEY) || 'null');
+    if (o && o.p && Date.now() - o.t < PASS_TTL) return o.p;
+  } catch (_) {}
+  return null;
+}
+function savePass(p) {
+  try { localStorage.setItem(PASS_KEY, JSON.stringify({ p, t: Date.now() })); } catch (_) {}
+}
+function clearPass() {
+  try { localStorage.removeItem(PASS_KEY); } catch (_) {}
+}
+function b64(s) { return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
+async function decrypt(e, pass) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: b64(e.salt), iterations: e.iter, hash: 'SHA-256' },
+    base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(e.iv) }, key, b64(e.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+function askPassword(msg) {
+  return new Promise(resolve => {
+    $gate.hidden = false;
+    $pwMsg.textContent = msg || '';
+    setTimeout(() => $pw.focus(), 50);
+    $gateForm.onsubmit = async ev => {
+      ev.preventDefault();
+      const p = normPass($pw.value);
+      if (!p) return;
+      $pwGo.disabled = true;
+      $pwGo.textContent = 'בודק…';
+      try {
+        const data = await decrypt(enc, p);
+        savePass(p);
+        $gate.hidden = true;
+        $pw.value = '';
+        resolve(data);
+      } catch (_) {
+        $pwMsg.textContent = 'סיסמה שגויה – נסו שוב';
+        $pw.select();
+      } finally {
+        $pwGo.disabled = false;
+        $pwGo.textContent = 'כניסה';
+      }
+    };
+  });
+}
+async function unlock() {
+  const saved = getSavedPass();
+  if (saved) {
+    try { return await decrypt(enc, saved); }
+    catch (_) { clearPass(); return askPassword('הסיסמה הוחלפה – הזינו את הסיסמה החדשה'); }
+  }
+  return askPassword();
 }
 
 async function init() {
@@ -441,31 +612,36 @@ async function init() {
     const q0 = new URL(location.href).searchParams.get('q');
     if (q0) $q.value = q0;
   } catch (_) {}
-  focusSearch();
+
+  if (!window.crypto || !crypto.subtle) {
+    setStatus('הדפדפן לא תומך', true);
+    $results.innerHTML = '<p class="hint">הדפדפן הזה ישן מדי. פתחו את הקישור בכרום או בספארי מעודכנים.</p>';
+    return;
+  }
 
   const cached = loadCache();
-  if (cached && cached.items) {
-    places = prepare(cached);
-    setStatus('מתעדכן…');
-    render();
-  }
+  let fresh = null, netErr = null;
   try {
     const r = await fetch(DATA_URL + '?t=' + Date.now(), { cache: 'no-store' });
     if (!r.ok) throw new Error('שגיאת רשת ' + r.status);
-    const data = await r.json();
-    places = prepare(data);
-    lastUpdated = data.updated;
-    saveCache(data);
-    defaultStatus();
-    render();
-  } catch (err) {
-    if (places.length) {
-      setStatus(`אין חיבור – נתונים שמורים מ-${fmtTime(cached.updated)}`, true);
-    } else {
-      setStatus('שגיאה', true);
-      $results.innerHTML = `<p class="hint">לא ניתן לטעון את הנתונים<br>${esc(err.message)}</p>`;
-    }
+    fresh = await r.json();
+    saveCache(fresh);
+  } catch (err) { netErr = err; }
+
+  enc = fresh || cached;
+  if (!enc || !enc.ct) {
+    setStatus('שגיאה', true);
+    $results.innerHTML = `<p class="hint">לא ניתן לטעון את הנתונים<br>${esc(netErr ? netErr.message : '')}</p>`;
+    return;
   }
+
+  const data = await unlock();
+  places = prepare(data);
+  lastUpdated = enc.updated;
+  if (fresh) defaultStatus();
+  else setStatus(`אין חיבור – נתונים שמורים מ-${fmtTime(enc.updated)}`, true);
+  render();
+  focusSearch();
 }
 init();
 </script>
