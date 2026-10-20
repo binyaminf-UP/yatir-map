@@ -230,6 +230,193 @@
   }
   #pwGo:disabled { opacity: .6; }
   #pwMsg { min-height: 1.5em; margin-top: 10px; color: var(--danger); }
+  /* ---------- סריקת אשכולות ---------- */
+  .scan {
+    background: var(--surface);
+    border: 2px solid var(--danger);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .scan label { display: block; font-weight: 800; font-size: 1.25rem; margin-bottom: 10px; color: var(--danger); }
+  .scan-row { display: flex; gap: 10px; }
+  #cnum {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    font-size: 1.4rem;
+    text-align: center;
+    padding: 12px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+  }
+  #cnum:focus { border-color: var(--danger); }
+  #cgo {
+    flex: none;
+    padding: 12px 22px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--danger);
+    color: #fff;
+    font: inherit;
+    font-size: 1.15rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  @media (prefers-color-scheme: dark) { #cgo { color: #1a0f0f; } }
+  #cmsg { min-height: 1.3em; margin-top: 6px; color: var(--danger); font-size: .95rem; }
+  .cmap-title { color: var(--muted); margin: 4px 2px 6px; }
+  .cmap {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+    touch-action: manipulation;
+  }
+  .cmap .cl { cursor: pointer; }
+  .cmap .cl polygon { transition: fill-opacity .15s; }
+  .cmap .cl:hover polygon, .cmap .cl:focus polygon { fill-opacity: .6; }
+  .cmap .cl:focus { outline: none; }
+  .cmap text {
+    pointer-events: none;
+    text-anchor: middle;
+    font-weight: 800;
+    fill: var(--text);
+    paint-order: stroke;
+    stroke: var(--surface);
+    stroke-width: 3px;
+  }
+  .cmap .num { font-size: 14px; }
+  .cmap .cnt { font-size: 10px; font-weight: 700; }
+  .cmap .cnt.full { fill: var(--call); }
+  .cmap .dot { fill: var(--muted); opacity: .55; pointer-events: none; }
+  .home-hint { color: var(--muted); text-align: center; font-size: 1rem; margin: 4px 0 10px; }
+
+  #cv {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: var(--bg);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+  #cv[hidden] { display: none; }
+  body.cv-open { overflow: hidden; }
+  .cv-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+    background: var(--surface);
+    border-bottom: 5px solid var(--accent);
+  }
+  .cv-back {
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 1.5rem;
+    cursor: pointer;
+  }
+  .cv-head h2 { margin: 0; font-size: 1.4rem; }
+  .cv-prog { margin-inline-start: auto; font-weight: 800; color: var(--call); font-size: 1.1rem; white-space: nowrap; }
+  .cv-bar { height: 8px; background: var(--border); }
+  .cv-bar i { display: block; height: 100%; width: 0; background: var(--call); transition: width .25s; }
+  .cv-sync { text-align: center; font-size: .9rem; color: var(--muted); padding: 6px 16px; min-height: 1.4em; }
+  .cv-sync.err { color: var(--danger); }
+  #cvList { padding: 0 16px; }
+  .srow {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .srow.done { background: color-mix(in srgb, var(--call) 12%, var(--surface)); border-color: color-mix(in srgb, var(--call) 45%, var(--border)); }
+  .chk { flex: none; cursor: pointer; padding: 2px; }
+  .chk input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .chk span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--muted);
+    border-radius: 10px;
+    background: var(--surface);
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 900;
+  }
+  .chk input:checked + span { background: var(--call); border-color: var(--call); }
+  .chk input:checked + span::after { content: "✓"; }
+  .chk input:focus-visible + span { box-shadow: 0 0 0 4px var(--accent-soft); }
+  .who { flex: 1; min-width: 0; }
+  .who-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  .who-top b { font-size: 1.2rem; line-height: 1.3; word-break: break-word; }
+  .who-top small { color: var(--muted); font-size: .95rem; }
+  .who-top em { font-style: normal; color: var(--call); font-size: .85rem; font-weight: 700; }
+  .mtels { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .mtel {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 2px solid var(--call);
+    color: var(--call);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .mtel svg { width: 18px; height: 18px; fill: currentColor; }
+  .note {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    font-size: 1.05rem;
+    line-height: 1.4;
+    resize: vertical;
+    min-height: 46px;
+    outline: none;
+  }
+  .note:focus { border-color: var(--accent); }
+  .cv-sep { color: var(--muted); font-weight: 700; margin: 18px 4px 8px; }
+  .cv-foot { display: flex; gap: 10px; padding: 8px 16px 0; }
+  .cv-foot button {
+    flex: 1;
+    padding: 15px 10px;
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: 1.05rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .cv-wa { background: #25d366; color: #06301a; border: 0; }
+  .cv-clear { background: var(--surface); color: var(--danger); border: 2px solid var(--danger); }
+  .cv-clear.armed { background: var(--danger); color: #fff; }
+  .cv-note { color: var(--muted); font-size: .85rem; text-align: center; padding: 10px 16px 0; }
 </style>
 </head>
 <body>
@@ -243,7 +430,7 @@
       </a>
     </div>
     <div class="search">
-      <input id="q" type="search" placeholder="איתור, שם או טלפון" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="חיפוש" autofocus>
+      <input id="q" type="search" value="" placeholder="איתור, שם או טלפון" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="חיפוש" autofocus>
       <div class="tools">
         <button id="clear" class="tool" type="button" aria-label="ניקוי">×</button>
         <button id="mic" class="tool" type="button" aria-label="חיפוש בקול" hidden>
@@ -255,6 +442,22 @@
   </div>
 </header>
 <main class="wrap" id="results"><p class="hint">טוען נתונים…</p></main>
+
+<section id="cv" hidden aria-live="polite">
+  <div class="cv-head" id="cvHead">
+    <button class="cv-back" id="cvBack" type="button" aria-label="חזרה">→</button>
+    <h2 id="cvTitle">אשכול</h2>
+    <span class="cv-prog" id="cvProg"></span>
+  </div>
+  <div class="cv-bar"><i id="cvBar"></i></div>
+  <div class="cv-sync" id="cvSync"></div>
+  <div class="wrap" id="cvList"></div>
+  <div class="wrap cv-foot">
+    <button type="button" class="cv-wa" id="cvWa">שליחת סיכום בוואטסאפ</button>
+    <button type="button" class="cv-clear" id="cvClear">ניקוי האשכול</button>
+  </div>
+  <p class="wrap cv-note">הסימונים משותפים לכל מי שנכנס לאתר, ונמחקים אוטומטית 24 שעות אחרי השינוי האחרון.</p>
+</section>
 
 <section id="gate" hidden>
   <form class="gate-box" id="gateForm" autocomplete="off">
@@ -438,8 +641,7 @@ function render() {
   $clear.classList.toggle('show', !!q);
   if (!places.length) return;
   if (!norm(q)) {
-    $results.innerHTML = '<p class="hint">הקלידו מספר איתור, שם משפחה או מספר טלפון'
-      + ($mic.hidden ? '' : '<br>או לחצו על המיקרופון ואמרו "איתור 8854"') + '</p>';
+    renderHome();
     return;
   }
   const res = search(q);
@@ -474,14 +676,7 @@ $results.addEventListener('click', async e => {
 let tId;
 function onQueryChange(immediate) {
   clearTimeout(tId);
-  const run = () => {
-    render();
-    try {
-      const u = new URL(location.href);
-      $q.value ? u.searchParams.set('q', $q.value) : u.searchParams.delete('q');
-      history.replaceState(null, '', u);
-    } catch (_) {}
-  };
+  const run = () => render();
   immediate ? run() : (tId = setTimeout(run, 120));
 }
 $q.addEventListener('input', () => onQueryChange(false));
@@ -493,12 +688,16 @@ $q.addEventListener('keydown', e => { if (e.key === 'Enter') $q.blur(); });
    לכן: הסמן מוכן בשדה, ונגיעה בכל מקום ריק בכותרת או במסך הפתיחה פותחת את המקלדת. */
 function focusSearch() {
   const g = document.getElementById('gate');
+  if (!document.getElementById('cv').hidden) return;
   const el = (g && !g.hidden) ? document.getElementById('pw') : $q;
   try { el.focus({ preventScroll: true }); } catch (_) { el.focus(); }
 }
-window.addEventListener('pageshow', focusSearch);
+window.addEventListener('pageshow', e => {
+  if (e.persisted && $q.value) { $q.value = ''; onQueryChange(true); }
+  focusSearch();
+});
 document.addEventListener('click', e => {
-  if (e.target.closest('a, button, input, .card, #gate')) return;
+  if (e.target.closest('a, button, input, textarea, .card, #gate, #cv, .scan, .cmap')) return;
   focusSearch();
 });
 
@@ -553,6 +752,500 @@ if (SR) {
     }
   });
 }
+
+/* ---------- סריקת אשכולות צח"י ---------- */
+const SCAN_STATE_KEY = 'yatir-scan-state-v1';   // מצב אחרון שהתקבל מהשרת (לתצוגה בלי קליטה)
+const SCAN_QUEUE_KEY = 'yatir-scan-queue-v1';   // שינויים שעוד לא נשמרו בשרת
+const SCAN_TTL = 24 * 3600 * 1000;
+const POLL_MS = 12000;
+const SUMMARY_MS = 30000;
+
+let clusters = [];
+let scanApi = '';
+let scanToken = '';
+let scanState = {};
+let scanQueue = [];
+let scanSummary = {};
+let curCluster = null;
+let pollTimer = null, summaryTimer = null, flushTimer = null;
+let flushing = false;
+let lastSync = 0;
+let openedByPush = false;
+
+const $cv = document.getElementById('cv');
+const $cvHead = document.getElementById('cvHead');
+const $cvTitle = document.getElementById('cvTitle');
+const $cvProg = document.getElementById('cvProg');
+const $cvBar = document.getElementById('cvBar');
+const $cvSync = document.getElementById('cvSync');
+const $cvList = document.getElementById('cvList');
+const $cvClear = document.getElementById('cvClear');
+
+function lsGet(k, d) {
+  try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (_) { return d; }
+}
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} }
+
+function pruneState(st) {
+  const now = Date.now();
+  for (const c of Object.keys(st || {})) {
+    for (const k of Object.keys(st[c] || {})) {
+      if (!st[c][k] || now - (st[c][k].t || 0) > SCAN_TTL) delete st[c][k];
+    }
+    if (!Object.keys(st[c] || {}).length) delete st[c];
+  }
+  return st || {};
+}
+
+async function sha256hex(s) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function setupScan(data) {
+  clusters = (data.clusters || []).map(c => Object.assign({}, c, { id: String(c.id) }));
+  scanApi = data.api || '';
+  scanState = pruneState(lsGet(SCAN_STATE_KEY, {}));
+  scanQueue = lsGet(SCAN_QUEUE_KEY, []).filter(op => Date.now() - (op.t || 0) < SCAN_TTL);
+  const pass = getSavedPass();
+  if (pass) scanToken = await sha256hex(pass + '|yatir-scan');
+  if (scanQueue.length) scheduleFlush(500);
+  refreshSummary();
+  clearInterval(summaryTimer);
+  summaryTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && !curCluster && !norm($q.value)) refreshSummary();
+  }, SUMMARY_MS);
+}
+
+function recKey(p) { return ((p.loc || '') + '|' + p.name).slice(0, 78); }
+
+function clusterItems(cid) {
+  return places
+    .filter(p => p.cluster === cid)
+    .sort((a, b) => ((a.loc ? 0 : 1) - (b.loc ? 0 : 1))
+      || (parseInt(a.loc) || 0) - (parseInt(b.loc) || 0)
+      || a.name.localeCompare(b.name, 'he'));
+}
+
+/* מצב אפקטיבי = מה שהשרת החזיר + שינויים מקומיים שעוד בדרך */
+function stateFor(cid) {
+  const st = JSON.parse(JSON.stringify(scanState[cid] || {}));
+  for (const op of scanQueue) {
+    if (op.c !== cid) continue;
+    const cur = st[op.k] || {};
+    if ('s' in op) cur.s = op.s;
+    if ('n' in op) cur.n = op.n;
+    cur.t = op.t;
+    if (!cur.s && !cur.n) delete st[op.k]; else st[op.k] = cur;
+  }
+  return st;
+}
+
+/* ---------- תקשורת עם השרת ---------- */
+async function apiGet(params) {
+  const u = scanApi + '?' + new URLSearchParams(Object.assign({}, params, { t: scanToken }));
+  const r = await fetch(u, { cache: 'no-store' });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.err || 'error');
+  return j;
+}
+async function apiPost(body) {
+  const r = await fetch(scanApi, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({}, body, { t: scanToken })),
+  });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.err || 'error');
+  return j;
+}
+
+function setSync(kind, extra) {
+  const msgs = {
+    ok: '✓ מסונכרן עם כל הצוות' + (lastSync ? ' · ' + new Date(lastSync).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : ''),
+    saving: 'שומר…',
+    loading: 'טוען סימונים…',
+    offline: 'אין חיבור – השינויים יישמרו כשהחיבור יחזור',
+    error: 'שגיאה בשמירה – מנסה שוב…',
+    auth: 'השרת לא מזהה את הסיסמה – פנו למנהל האתר',
+    local: 'שרת הסריקות עדיין לא מחובר – הסימונים נשמרים רק במכשיר הזה',
+  };
+  $cvSync.textContent = (msgs[kind] || '') + (extra || '');
+  $cvSync.classList.toggle('err', ['offline', 'error', 'auth', 'local'].includes(kind));
+}
+
+function saveScan() {
+  lsSet(SCAN_STATE_KEY, scanState);
+  lsSet(SCAN_QUEUE_KEY, scanQueue);
+}
+
+function queueOp(cid, k, patch) {
+  let op = scanQueue.find(o => o.c === cid && o.k === k);
+  if (!op) { op = { c: cid, k: k }; scanQueue.push(op); }
+  Object.assign(op, patch, { t: Date.now() });
+  saveScan();
+  scheduleFlush(patch.n !== undefined ? 900 : 250);
+}
+
+function scheduleFlush(ms) {
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(flush, ms);
+}
+
+async function flush() {
+  if (flushing || !scanQueue.length) return;
+  if (!scanApi) {
+    for (const op of scanQueue) {
+      const st = scanState[op.c] = scanState[op.c] || {};
+      const cur = st[op.k] || {};
+      if ('s' in op) cur.s = op.s;
+      if ('n' in op) cur.n = op.n;
+      cur.t = op.t;
+      if (!cur.s && !cur.n) delete st[op.k]; else st[op.k] = cur;
+    }
+    scanQueue = [];
+    saveScan();
+    if (curCluster) setSync('local');
+    return;
+  }
+  if (navigator.onLine === false) { if (curCluster) setSync('offline'); return; }
+  flushing = true;
+  if (curCluster) setSync('saving');
+  const sent = scanQueue.map(op => ({ ref: op, t: op.t }));
+  const byC = {};
+  for (const x of sent) (byC[x.ref.c] = byC[x.ref.c] || []).push(x);
+  try {
+    for (const c of Object.keys(byC)) {
+      const ops = byC[c].map(x => {
+        const o = { k: x.ref.k };
+        if ('s' in x.ref) o.s = x.ref.s;
+        if ('n' in x.ref) o.n = x.ref.n;
+        return o;
+      });
+      const j = await apiPost({ a: 'set', c: c, ops: ops });
+      scanState[c] = j.st || {};
+      // מוחקים מהתור רק שינויים שלא נערכו שוב בזמן השליחה
+      scanQueue = scanQueue.filter(op => !byC[c].some(x => x.ref === op && x.t === op.t));
+    }
+    lastSync = Date.now();
+    saveScan();
+    if (curCluster) { setSync('ok'); refreshRows(); }
+  } catch (err) {
+    saveScan();
+    if (curCluster) setSync(err.message === 'auth' ? 'auth' : (navigator.onLine === false ? 'offline' : 'error'));
+    if (err.message !== 'auth') scheduleFlush(10000);
+  } finally {
+    flushing = false;
+    if (scanQueue.some(op => !sent.some(x => x.ref === op && x.t === op.t))) scheduleFlush(300);
+  }
+}
+
+async function pullCluster(cid) {
+  if (!scanApi || flushing) return;
+  try {
+    const j = await apiGet({ a: 'get', c: cid });
+    scanState[cid] = j.st || {};
+    lastSync = Date.now();
+    saveScan();
+    if (curCluster === cid) {
+      setSync(scanQueue.length ? 'saving' : 'ok');
+      refreshRows();
+    }
+  } catch (err) {
+    if (curCluster === cid) setSync(err.message === 'auth' ? 'auth' : (navigator.onLine === false ? 'offline' : 'error'));
+  }
+}
+
+async function refreshSummary() {
+  if (scanApi) {
+    try {
+      const j = await apiGet({ a: 'summary' });
+      scanSummary = j.summary || {};
+    } catch (_) { return; }
+  } else {
+    scanSummary = {};
+    for (const c of Object.keys(scanState)) {
+      const n = Object.values(scanState[c]).filter(v => v.s).length;
+      if (n) scanSummary[c] = n;
+    }
+  }
+  if (!curCluster && !norm($q.value)) updateMapCounts();
+}
+
+window.addEventListener('online', () => scheduleFlush(200));
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (curCluster) { scheduleFlush(100); pullCluster(curCluster); }
+  else refreshSummary();
+});
+
+/* ---------- מסך הבית: בחירת אשכול ומפה ---------- */
+function polyCentroid(pts) {
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length];
+    const f = x1 * y2 - x2 * y1;
+    a += f; cx += (x1 + x2) * f; cy += (y1 + y2) * f;
+  }
+  if (Math.abs(a) < 1e-9) {
+    return [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length];
+  }
+  return [cx / (3 * a), cy / (3 * a)];
+}
+
+function clusterTotal(cid) { return places.filter(p => p.cluster === cid).length; }
+
+function mapSvg() {
+  if (!clusters.length) return '';
+  const all = clusters.flatMap(c => c.poly);
+  const lat0 = Math.min(...all.map(p => p[0])), lat1 = Math.max(...all.map(p => p[0]));
+  const lon0 = Math.min(...all.map(p => p[1])), lon1 = Math.max(...all.map(p => p[1]));
+  const k = Math.cos((lat0 + lat1) / 2 * Math.PI / 180);
+  const W = 340, pad = 14;
+  const sc = (W - 2 * pad) / ((lon1 - lon0) * k || 1);
+  const H = Math.round((lat1 - lat0) * sc + 2 * pad);
+  const xy = (lat, lon) => [(lon - lon0) * k * sc + pad, (lat1 - lat) * sc + pad];
+  const dots = places
+    .filter(p => p.point && p.point.lat >= lat0 - .0003 && p.point.lat <= lat1 + .0003
+      && p.point.lon >= lon0 - .0003 && p.point.lon <= lon1 + .0003)
+    .map(p => { const [x, y] = xy(p.point.lat, p.point.lon); return `<circle class="dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2"/>`; })
+    .join('');
+  const shapes = clusters.map(c => {
+    const pts = c.poly.map(p => xy(p[0], p[1]));
+    const [cx, cy] = polyCentroid(pts);
+    const color = /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : '#607d8b';
+    const label = 'אשכול ' + c.id + (c.label ? ' ' + c.label : '');
+    return `<g class="cl" data-c="${esc(c.id)}" tabindex="0" role="button" aria-label="${esc(label)}">
+      <title>${esc(label)}</title>
+      <polygon points="${pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="${color}" fill-opacity=".35" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>
+      <text class="num" x="${cx.toFixed(1)}" y="${(cy + 4).toFixed(1)}">${esc(c.id)}</text>
+      <text class="cnt" data-cnt="${esc(c.id)}" x="${cx.toFixed(1)}" y="${(cy + 16).toFixed(1)}"></text>
+    </g>`;
+  }).join('');
+  return `<svg class="cmap" viewBox="0 0 ${W} ${H}" role="group" aria-label="מפת אשכולות">${dots}${shapes}</svg>`;
+}
+
+function updateMapCounts() {
+  document.querySelectorAll('.cmap [data-cnt]').forEach(t => {
+    const cid = t.getAttribute('data-cnt');
+    const n = scanSummary[cid] || 0;
+    const tot = clusterTotal(cid);
+    t.textContent = n ? (n >= tot ? '✓ הושלם' : n + '/' + tot) : '';
+    t.classList.toggle('full', n > 0 && n >= tot);
+  });
+}
+
+function renderHome() {
+  const scan = clusters.length ? `
+    <div class="scan">
+      <label for="cnum">סריקת אשכול צח"י</label>
+      <div class="scan-row">
+        <input id="cnum" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="מספר אשכול" autocomplete="off" enterkeyhint="go">
+        <button id="cgo" type="button">פתיחה</button>
+      </div>
+      <div id="cmsg" role="alert"></div>
+    </div>
+    <div class="cmap-title">או לחצו על אשכול במפה:</div>
+    ${mapSvg()}` : '';
+  $results.innerHTML = '<p class="home-hint">לחיפוש: הקלידו מספר איתור, שם משפחה או טלפון'
+    + ($mic.hidden ? '' : ', או לחצו על המיקרופון') + '</p>' + scan;
+  updateMapCounts();
+}
+
+function tryOpenFromInput() {
+  const inp = document.getElementById('cnum');
+  const v = (inp.value || '').replace(/\D/g, '');
+  const msg = document.getElementById('cmsg');
+  if (!v) { msg.textContent = 'הקלידו מספר אשכול'; inp.focus(); return; }
+  if (!clusters.some(c => c.id === v)) {
+    msg.textContent = `אין אשכול ${v}. האשכולות: ${clusters.map(c => c.id).join(', ')}`;
+    inp.select();
+    return;
+  }
+  inp.blur();
+  openCluster(v);
+}
+
+$results.addEventListener('click', e => {
+  if (e.target.closest('#cgo')) { tryOpenFromInput(); return; }
+  const g = e.target.closest('.cmap .cl');
+  if (g) openCluster(g.getAttribute('data-c'));
+});
+$results.addEventListener('keydown', e => {
+  if (e.target.id === 'cnum' && e.key === 'Enter') { e.preventDefault(); tryOpenFromInput(); }
+  const g = e.target.closest && e.target.closest('.cmap .cl');
+  if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openCluster(g.getAttribute('data-c')); }
+});
+
+/* ---------- מסך אשכול ---------- */
+function openCluster(cid) {
+  openedByPush = true;
+  if (location.hash === '#c' + cid) routeFromHash();
+  else location.hash = 'c' + cid;
+}
+function closeCluster() {
+  if (openedByPush && history.length > 1) history.back();
+  else { history.replaceState(null, '', location.pathname + location.search); routeFromHash(); }
+}
+function routeFromHash() {
+  const m = location.hash.match(/^#c(\d{1,3})$/);
+  if (m && places.length && clusters.some(c => c.id === m[1])) { showCluster(m[1]); return true; }
+  if (curCluster) hideCluster();
+  return false;
+}
+window.addEventListener('hashchange', routeFromHash);
+document.getElementById('cvBack').addEventListener('click', closeCluster);
+
+function showCluster(cid) {
+  const c = clusters.find(x => x.id === cid);
+  curCluster = cid;
+  $cvTitle.textContent = 'אשכול ' + cid + (c.label ? ' – ' + c.label : '');
+  $cvHead.style.borderBottomColor = /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : '';
+  $cv.hidden = false;
+  document.body.classList.add('cv-open');
+  $cv.scrollTop = 0;
+  disarmClear();
+  renderCluster();
+  setSync(scanApi ? (lastSync ? 'ok' : 'loading') : 'local');
+  scheduleFlush(50);
+  pullCluster(cid);
+  clearInterval(pollTimer);
+  pollTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') { if (scanQueue.length) scheduleFlush(50); pullCluster(cid); }
+  }, POLL_MS);
+}
+
+function hideCluster() {
+  curCluster = null;
+  clearInterval(pollTimer);
+  $cv.hidden = true;
+  document.body.classList.remove('cv-open');
+  scheduleFlush(50);
+  if (!norm($q.value)) { renderHome(); refreshSummary(); }
+}
+
+function renderCluster() {
+  const items = clusterItems(curCluster);
+  if (!items.length) {
+    $cvList.innerHTML = '<p class="hint">אין רשומות באשכול הזה</p>';
+    updateProgress();
+    return;
+  }
+  let html = '', sepDone = false;
+  for (const p of items) {
+    if (!p.loc && !sepDone) {
+      html += '<div class="cv-sep">ללא מספר איתור (מבני ציבור ועוד)</div>';
+      sepDone = true;
+    }
+    const tels = [];
+    if (p.pm) tels.push(`<a class="mtel" href="tel:+972${p.pm.replace(/^0/, '')}">${ICON_PHONE}${esc(p.nm || 'בעל')}</a>`);
+    if (p.pw) tels.push(`<a class="mtel" href="tel:+972${p.pw.replace(/^0/, '')}">${ICON_PHONE}${esc(p.nw || 'אישה')}</a>`);
+    html += `<div class="srow" data-k="${esc(recKey(p))}">
+      <label class="chk"><input type="checkbox" aria-label="נסרק – ${esc(p.name)}"><span></span></label>
+      <div class="who">
+        <div class="who-top"><b>${esc(p.name)}</b>${p.loc ? `<small>איתור ${esc(p.loc)}</small>` : ''}<em class="when"></em></div>
+        ${tels.length ? `<div class="mtels">${tels.join('')}</div>` : ''}
+        <textarea class="note" rows="1" maxlength="500" placeholder="פירוט מצב המשפחה…" aria-label="הערה – ${esc(p.name)}"></textarea>
+      </div>
+    </div>`;
+  }
+  $cvList.innerHTML = html;
+  refreshRows();
+}
+
+function refreshRows() {
+  if (!curCluster) return;
+  const st = stateFor(curCluster);
+  $cvList.querySelectorAll('.srow').forEach(row => {
+    const v = st[row.dataset.k] || {};
+    const cb = row.querySelector('input[type=checkbox]');
+    cb.checked = !!v.s;
+    row.classList.toggle('done', !!v.s);
+    row.querySelector('.when').textContent = v.s && v.t
+      ? 'נסרק ' + new Date(v.t).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '';
+    const ta = row.querySelector('.note');
+    if (document.activeElement !== ta && ta.value !== (v.n || '')) ta.value = v.n || '';
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  const rows = $cvList.querySelectorAll('.srow');
+  const done = $cvList.querySelectorAll('.srow.done').length;
+  $cvProg.textContent = rows.length ? `${done} / ${rows.length} נסרקו` : '';
+  $cvBar.style.width = rows.length ? (100 * done / rows.length) + '%' : '0';
+}
+
+$cvList.addEventListener('change', e => {
+  if (e.target.type !== 'checkbox' || !curCluster) return;
+  const row = e.target.closest('.srow');
+  queueOp(curCluster, row.dataset.k, { s: e.target.checked });
+  refreshRows();
+});
+const noteTimers = {};
+$cvList.addEventListener('input', e => {
+  if (!e.target.classList.contains('note') || !curCluster) return;
+  const k = e.target.closest('.srow').dataset.k, cid = curCluster, ta = e.target;
+  clearTimeout(noteTimers[k]);
+  noteTimers[k] = setTimeout(() => queueOp(cid, k, { n: ta.value }), 700);
+});
+$cvList.addEventListener('focusout', e => {
+  if (!e.target.classList.contains('note') || !curCluster) return;
+  const k = e.target.closest('.srow').dataset.k;
+  clearTimeout(noteTimers[k]);
+  const cur = (stateFor(curCluster)[k] || {}).n || '';
+  if (e.target.value !== cur) queueOp(curCluster, k, { n: e.target.value });
+});
+
+/* סיכום לוואטסאפ */
+document.getElementById('cvWa').addEventListener('click', () => {
+  if (!curCluster) return;
+  const st = stateFor(curCluster);
+  const items = clusterItems(curCluster);
+  const done = items.filter(p => (st[recKey(p)] || {}).s).length;
+  const c = clusters.find(x => x.id === curCluster);
+  const lines = [`סריקת אשכול ${curCluster}${c && c.label ? ' (' + c.label + ')' : ''} – ${done}/${items.length} נסרקו`, ''];
+  for (const p of items) {
+    const v = st[recKey(p)] || {};
+    lines.push(`${v.s ? '✅' : '⬜'} ${p.name}${p.loc ? ' (' + p.loc + ')' : ''}${v.n ? ' – ' + v.n.replace(/\s+/g, ' ') : ''}`);
+  }
+  window.open('https://wa.me/?text=' + encodeURIComponent(lines.join('\n')), '_blank', 'noopener');
+});
+
+/* ניקוי אשכול – לחיצה כפולה לאישור */
+let clearArmT = null;
+function disarmClear() {
+  clearTimeout(clearArmT);
+  $cvClear.classList.remove('armed');
+  $cvClear.textContent = 'ניקוי האשכול';
+}
+$cvClear.addEventListener('click', async () => {
+  if (!curCluster) return;
+  if (!$cvClear.classList.contains('armed')) {
+    $cvClear.classList.add('armed');
+    $cvClear.textContent = 'לחצו שוב – ימחק לכולם';
+    clearArmT = setTimeout(disarmClear, 4000);
+    return;
+  }
+  disarmClear();
+  const cid = curCluster;
+  scanQueue = scanQueue.filter(op => op.c !== cid);
+  if (scanApi) {
+    setSync('saving');
+    try {
+      const j = await apiPost({ a: 'clear', c: cid });
+      scanState[cid] = j.st || {};
+      lastSync = Date.now();
+      setSync('ok');
+    } catch (err) {
+      setSync(err.message === 'auth' ? 'auth' : 'error', ' (הניקוי לא בוצע)');
+    }
+  } else {
+    scanState[cid] = {};
+  }
+  saveScan();
+  refreshRows();
+});
 
 /* ---------- טעינה, סיסמה ופענוח ---------- */
 const $gate = document.getElementById('gate');
@@ -631,10 +1324,12 @@ async function unlock() {
 }
 
 async function init() {
+  // כל כניסה מתחילה בחיפוש ריק: מנקים שאריות ?q= מגרסה קודמת, וגם ערך שהדפדפן שחזר
   try {
-    const q0 = new URL(location.href).searchParams.get('q');
-    if (q0) $q.value = q0;
+    const u = new URL(location.href);
+    if (u.searchParams.has('q')) { u.searchParams.delete('q'); history.replaceState(null, '', u); }
   } catch (_) {}
+  $q.value = '';
 
   if (!window.crypto || !crypto.subtle) {
     setStatus('הדפדפן לא תומך', true);
@@ -660,11 +1355,12 @@ async function init() {
 
   const data = await unlock();
   places = prepare(data);
+  await setupScan(data);
   lastUpdated = enc.updated;
   if (fresh) defaultStatus();
   else setStatus(`אין חיבור – נתונים שמורים מ-${fmtTime(enc.updated)}`, true);
   render();
-  focusSearch();
+  if (!routeFromHash()) focusSearch();
 }
 init();
 </script>

@@ -44,6 +44,7 @@ jobs:
           SHEET_ID: ${{ secrets.SHEET_ID }}
           SHEET_GID: ${{ secrets.SHEET_GID }}
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+          SCAN_API: ${{ secrets.SCAN_API }}
         run: python scripts/build_data.py
 
       - name: שמירת טביעת האצבע אם יש שינוי

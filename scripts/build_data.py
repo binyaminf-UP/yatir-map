@@ -92,6 +92,92 @@ def point_of(pm):
     return None
 
 
+RE_CLUSTER_NAME = re.compile(r"^אשכול\s*(\d+)\s*(.*)$")
+
+
+def kml_color(c: str) -> str:
+    """KML: aabbggrr → #rrggbb"""
+    c = (c or "").strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{8}", c):
+        return ""
+    return "#" + c[6:8] + c[4:6] + c[2:4]
+
+
+def load_clusters(raw: bytes) -> list:
+    """גבולות האשכולות: מצולעים בשם 'אשכול N' מכל שכבה. נשמרים רק מספר, תווית, צבע וגבול."""
+    root = ET.fromstring(raw)
+    styles, maps = {}, {}
+    for el in root.iter():
+        tag = local(el.tag)
+        if tag == "Style" and el.get("id"):
+            col = ""
+            for sub in el.iter():
+                if local(sub.tag) == "LineStyle":
+                    c = child(sub, "color")
+                    col = kml_color(c.text if c is not None else "")
+            styles["#" + el.get("id")] = col
+        elif tag == "StyleMap" and el.get("id"):
+            for pair in el:
+                k, u = child(pair, "key"), child(pair, "styleUrl")
+                if k is not None and u is not None and (k.text or "").strip() == "normal":
+                    maps["#" + el.get("id")] = (u.text or "").strip()
+    out = {}
+    for pm in root.iter():
+        if local(pm.tag) != "Placemark":
+            continue
+        n_el = child(pm, "name")
+        m = RE_CLUSTER_NAME.match(clean(n_el.text if n_el is not None else ""))
+        if not m:
+            continue
+        ring = None
+        for el in pm.iter():
+            if local(el.tag) == "outerBoundaryIs":
+                for c in el.iter():
+                    if local(c.tag) == "coordinates" and c.text:
+                        ring = c.text
+        if not ring:
+            continue
+        pts = []
+        for t in ring.split():
+            parts = t.split(",")
+            try:
+                pts.append([round(float(parts[1]), 6), round(float(parts[0]), 6)])
+            except (IndexError, ValueError):
+                pass
+        if len(pts) < 3:
+            continue
+        su = child(pm, "styleUrl")
+        su = (su.text or "").strip() if su is not None else ""
+        color = styles.get(maps.get(su, su), "") or "#607d8b"
+        num = m.group(1)
+        out[num] = {"id": num, "label": clean(m.group(2)), "color": color, "poly": pts}
+    return sorted(out.values(), key=lambda c: int(c["id"]))
+
+
+def in_poly(lat: float, lon: float, poly: list) -> bool:
+    inside = False
+    for i in range(len(poly)):
+        y1, x1 = poly[i]
+        y2, x2 = poly[i - 1]
+        if (y1 > lat) != (y2 > lat) and lon < (x2 - x1) * (lat - y1) / (y2 - y1) + x1:
+            inside = not inside
+    return inside
+
+
+def assign_clusters(items: list, clusters: list) -> int:
+    """רשומה בלי מספר אשכול בתיאור – משויכת לפי המיקום שלה בתוך גבול האשכול."""
+    n = 0
+    for it in items:
+        if it["c"] or it["lat"] is None:
+            continue
+        for c in clusters:
+            if in_poly(it["lat"], it["lon"], c["poly"]):
+                it["c"] = c["id"]
+                n += 1
+                break
+    return n
+
+
 def load_map(raw: bytes, layers: set) -> list:
     try:
         root = ET.fromstring(raw)
@@ -312,6 +398,8 @@ def main() -> None:
         map_id = ident("MAP_ID") or fail("חסר MAP_ID")
         kml = fetch(f"https://www.google.com/maps/d/kml?forcekml=1&mid={map_id}", "המפה")
     items = load_map(kml, layers)
+    clusters = load_clusters(kml)
+    n_assigned = assign_clusters(items, clusters)
 
     matched, extra, n_phones = 0, [], 0
     if os.environ.get("CSV_FILE"):
@@ -328,7 +416,11 @@ def main() -> None:
         items += extra
 
     items.sort(key=lambda x: (int(x["l"]) if x["l"] else 10**9, x["n"]))
-    plain = json.dumps({"items": items}, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    payload = {"items": items, "clusters": clusters}
+    api = os.environ.get("SCAN_API", "").strip()
+    if re.fullmatch(r"https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec", api):
+        payload["api"] = api   # כתובת שרת הסריקות – רק בתוך הקובץ המוצפן
+    plain = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
     digest = hashlib.sha256(plain).hexdigest()
 
     # הקובץ המוצפן נוצר תמיד (לפרסום), אבל טביעת האצבע קובעת אם יש שינוי
@@ -344,6 +436,8 @@ def main() -> None:
         STATE.write_text(digest + "\n")
     print(f"רשומות במפה: {len(items) - len(extra)} | שורות טלפונים: {n_phones} | "
           f"הותאמו: {matched} | נוספו ללא מיקום: {len(extra)} | "
+          f"אשכולות: {len(clusters)} (שויכו לפי מיקום: {n_assigned}) | "
+          f"שרת סריקות: {'מחובר' if 'api' in payload else 'לא מוגדר'} | "
           f"{'יש שינוי' if changed else 'אין שינוי'}")
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if gh_out:
