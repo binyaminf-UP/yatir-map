@@ -1384,7 +1384,7 @@ function loadCache() {
 function saveCache(data) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch (_) {}
 }
-// סיסמה סלחנית: בלי רווחים, ואותיות סופיות כרגילות ("עין טובה" = "עינטובה")
+// סיסמה סלחנית: בלי רווחים, ואותיות סופיות כרגילות ("שלום עולם" = "שלומעולמ")
 function normPass(s) {
   return String(s || '').replace(/\s+/g, '').replace(/[ךםןףץ]/g, c => FINALS[c]);
 }
