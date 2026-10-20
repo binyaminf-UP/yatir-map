@@ -417,6 +417,115 @@
   .cv-clear { background: var(--surface); color: var(--danger); border: 2px solid var(--danger); }
   .cv-clear.armed { background: var(--danger); color: #fff; }
   .cv-note { color: var(--muted); font-size: .85rem; text-align: center; padding: 10px 16px 0; }
+  /* ===== פריסה קומפקטית לטלפון ===== */
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; font-size: 17px; }
+  header { position: static; flex: none; padding: calc(8px + env(safe-area-inset-top)) 12px 8px; }
+  .top { margin-bottom: 8px; }
+  h1 { font-size: 1.15rem; }
+  .call { padding: 7px 12px; font-size: .95rem; }
+  .call svg { width: 17px; height: 17px; }
+  #q { font-size: 1.2rem; padding: 11px 12px 11px 88px; }
+  .tool { width: 38px; height: 38px; }
+  .tool svg { width: 22px; height: 22px; }
+  #status { font-size: .78rem; margin-top: 4px; min-height: 0; }
+  body.searching #status:not(.err) { display: none; }
+  main#results {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 12px calc(14px + env(safe-area-inset-bottom));
+  }
+  body.home main#results { display: flex; flex-direction: column; overflow: hidden; }
+  .hint { padding: 20px 8px; font-size: 1rem; }
+
+  /* בית: שורת אשכול + מפה שממלאת את המסך */
+  .scan { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin: 0; flex: none; border-width: 2px; }
+  .scan label { margin: 0; font-size: 1.05rem; white-space: nowrap; }
+  #cnum { flex: 1; font-size: 1.15rem; padding: 8px; }
+  #cgo { padding: 9px 14px; font-size: 1.05rem; }
+  #cmsg { flex: none; min-height: 0; margin: 4px 2px 0; font-size: .9rem; }
+  #cmsg:empty { display: none; }
+  .cmap-wrap { position: relative; flex: 1; min-height: 160px; margin-top: 8px; }
+  .cmap { width: 100%; height: 100%; margin: 0; }
+  .cmap-cap { position: absolute; top: 6px; right: 10px; font-size: .8rem; color: var(--muted); pointer-events: none; }
+
+  /* כרטיס תוצאה */
+  .card { padding: 10px 12px; margin-bottom: 10px; }
+  .card-head { align-items: center; gap: 10px; }
+  .loc { min-width: 58px; padding: 4px 6px; }
+  .loc small { font-size: .68rem; }
+  .loc b { font-size: 1.2rem; }
+  .ttl { flex: 1; min-width: 0; }
+  .name { font-size: 1.12rem; }
+  .meta { font-size: .82rem; margin-top: 0; }
+  .share-ic {
+    flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .share-ic svg { width: 18px; height: 18px; fill: currentColor; }
+  .acts { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .acts .tel {
+    flex: 1 1 0; min-width: 76px; flex-direction: row; gap: 5px;
+    padding: 8px 6px; font-size: .98rem; border-width: 2px; border-radius: 12px;
+  }
+  .acts .tel span { display: inline; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .acts .tel svg { width: 18px; height: 18px; }
+  .ic {
+    flex: none; width: 50px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1px; padding: 5px 0; border-radius: 12px; text-decoration: none; font-weight: 700;
+  }
+  .ic svg { width: 22px; height: 22px; fill: currentColor; }
+  .ic small { font-size: .66rem; line-height: 1; }
+  .ic-waze { background: var(--waze); color: var(--waze-text); }
+  .ic-gm { background: var(--gmaps); color: #fff; }
+  .ic-home { border: 2px solid var(--call); color: var(--call); background: var(--surface); }
+  .nocoords { margin: 8px 0 0; font-size: .9rem; }
+
+  /* מסך אשכול: סימון | שם + הערה | טלפונים בצד שמאל */
+  .cv-head { padding: calc(6px + env(safe-area-inset-top)) 12px 6px; gap: 8px; border-bottom-width: 4px; }
+  .cv-back { width: 38px; height: 38px; font-size: 1.3rem; }
+  .cv-head h2 { font-size: 1.15rem; }
+  .cv-prog { font-size: 1rem; }
+  .cv-bar { height: 6px; }
+  .cv-sync { font-size: .8rem; padding: 4px 12px; }
+  #cvList { padding: 0 10px; }
+  .srow {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "chk top t1" "chk note t2";
+    align-items: center;
+    gap: 6px 8px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+  .srow .chk { grid-area: chk; align-self: center; padding: 0; }
+  .chk span { width: 36px; height: 36px; font-size: 1.3rem; border-width: 3px; }
+  .srow .who-top { grid-area: top; gap: 2px 8px; }
+  .srow .who-top b { font-size: 1.05rem; }
+  .srow .who-top small { font-size: .85rem; }
+  .srow .who-top em { font-size: .8rem; }
+  .srow .note { grid-area: note; margin: 0; min-height: 38px; padding: 7px 9px; font-size: .98rem; resize: none; overflow: hidden; }
+  .srow .mtel { width: 92px; justify-content: flex-start; padding: 6px 8px; font-size: .9rem; gap: 4px; border-radius: 10px; }
+  .srow .mtel span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .srow .mtel svg { width: 16px; height: 16px; flex: none; }
+  .srow .t1 { grid-area: t1; }
+  .srow .t2 { grid-area: t2; }
+  .cv-sep { margin: 12px 4px 6px; font-size: .9rem; }
+  .cv-foot { padding: 6px 10px 0; }
+  .cv-foot button { padding: 12px 8px; font-size: .98rem; }
+  .cv-note { font-size: .78rem; padding: 8px 12px 0; }
+  /* כותרת אשכול בצבע האשכול, קפואה בראש המסך */
+  .cv-top { position: sticky; top: 0; z-index: 3; background: var(--bg); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  .cv-head { position: static; border-bottom: 0; color: #fff; padding-top: calc(10px + env(safe-area-inset-top)); padding-bottom: 10px; }
+  .cv-head h2 { font-size: 1.35rem; font-weight: 800; }
+  .cv-head .cv-prog { color: inherit; }
+  .cv-head .cv-back { background: rgba(255,255,255,.25); color: inherit; }
+  .cv-head.light { color: #1b2420; }
+  .cv-head.light .cv-back { background: rgba(0,0,0,.12); }
 </style>
 </head>
 <body>
@@ -444,6 +553,7 @@
 <main class="wrap" id="results"><p class="hint">טוען נתונים…</p></main>
 
 <section id="cv" hidden aria-live="polite">
+  <div class="cv-top">
   <div class="cv-head" id="cvHead">
     <button class="cv-back" id="cvBack" type="button" aria-label="חזרה">→</button>
     <h2 id="cvTitle">אשכול</h2>
@@ -451,6 +561,7 @@
   </div>
   <div class="cv-bar"><i id="cvBar"></i></div>
   <div class="cv-sync" id="cvSync"></div>
+  </div>
   <div class="wrap" id="cvList"></div>
   <div class="wrap cv-foot">
     <button type="button" class="cv-wa" id="cvWa">שליחת סיכום בוואטסאפ</button>
@@ -598,30 +709,30 @@ function highlight(text, q) {
   return out + esc(text.slice(last));
 }
 
+const ICON_NAV = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4.5 20.3l.7.7L12 18l6.8 3 .7-.7z"/></svg>';
+const ICON_PIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
+const ICON_SHARE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.4a3 3 0 0 0 0-1.6l6.7-3.4A3 3 0 1 0 15 7l-6.7 3.4a3 3 0 1 0 0 3.2L15 17a3 3 0 1 0 3-1z"/></svg>';
+
 function card(p, q) {
-  let actions = '<p class="nocoords">אין מיקום למקום זה</p>';
+  const btns = [];
+  if (p.pm) btns.push(telBtn(p.pm, ICON_PHONE, p.nm || 'איש'));
+  if (p.pw) btns.push(telBtn(p.pw, ICON_PHONE, p.nw || 'אישה'));
+  if (p.ph) btns.push(`<a class="ic ic-home" href="tel:+972${p.ph.replace(/^0/, '')}" aria-label="התקשרות לבית, ${fmtPhone(p.ph)}">${ICON_HOME}<small>בית</small></a>`);
   if (p.point) {
     const ll = p.point.lat + ',' + p.point.lon;
-    actions = `<div class="actions">
-      <a class="btn btn-waze" href="https://waze.com/ul?ll=${ll}&navigate=yes" target="_blank" rel="noopener">ניווט ב-Waze</a>
-      <a class="btn btn-gmaps" href="https://www.google.com/maps/dir/?api=1&destination=${ll}" target="_blank" rel="noopener">Google Maps</a>
-      <button class="btn btn-share" type="button" data-share="${p.id}" aria-label="שיתוף מיקום">שיתוף</button>
-    </div>`;
+    btns.push(`<a class="ic ic-waze" href="https://waze.com/ul?ll=${ll}&navigate=yes" target="_blank" rel="noopener" aria-label="ניווט ב-Waze">${ICON_NAV}<small>Waze</small></a>`);
+    btns.push(`<a class="ic ic-gm" href="https://www.google.com/maps/dir/?api=1&destination=${ll}" target="_blank" rel="noopener" aria-label="ניווט ב-Google Maps">${ICON_PIN}<small>מפות</small></a>`);
   }
-  const tels = [];
-  if (p.pm) tels.push(telBtn(p.pm, ICON_PHONE, p.nm || 'איש'));
-  if (p.pw) tels.push(telBtn(p.pw, ICON_PHONE, p.nw || 'אישה'));
-  if (p.ph) tels.push(telBtn(p.ph, ICON_HOME, 'בית'));
   return `<article class="card">
     <div class="card-head">
       ${p.loc ? `<div class="loc"><small>איתור</small><b>${highlight(p.loc, q)}</b></div>` : ''}
-      <div>
+      <div class="ttl">
         <h2 class="name">${highlight(p.name, q)}</h2>
         ${p.cluster ? `<div class="meta">אשכול ${esc(p.cluster)}</div>` : ''}
       </div>
+      ${p.point ? `<button class="share-ic" type="button" data-share="${p.id}" aria-label="שיתוף מיקום">${ICON_SHARE}</button>` : ''}
     </div>
-    ${actions}
-    ${tels.length ? `<div class="phones">${tels.join('')}</div>` : ''}
+    ${btns.length ? `<div class="acts">${btns.join('')}</div>` : '<p class="nocoords">אין מיקום ואין טלפון</p>'}
   </article>`;
 }
 
@@ -632,15 +743,18 @@ function fmtPhone(d) {
 }
 function telBtn(num, icon, label) {
   const intl = '+972' + num.replace(/^0/, '');
-  return `<a class="tel" href="tel:${intl}" aria-label="התקשרות ל${esc(label)}, ${fmtPhone(num)}">
-    <span>${icon}${esc(label)}</span><small>${fmtPhone(num)}</small></a>`;
+  return `<a class="tel" href="tel:${intl}" aria-label="התקשרות ל${esc(label)}, ${fmtPhone(num)}">${icon}<span>${esc(label)}</span></a>`;
 }
 
 function render() {
   const q = $q.value;
   $clear.classList.toggle('show', !!q);
   if (!places.length) return;
-  if (!norm(q)) {
+  const searching = !!norm(q);
+  document.body.classList.toggle('searching', searching);
+  document.body.classList.toggle('home', !searching);
+  $results.scrollTop = 0;
+  if (!searching) {
     renderHome();
     return;
   }
@@ -1022,7 +1136,7 @@ function mapSvg() {
       <text class="cnt" data-cnt="${esc(c.id)}" x="${cx.toFixed(1)}" y="${(cy + 16).toFixed(1)}"></text>
     </g>`;
   }).join('');
-  return `<svg class="cmap" viewBox="0 0 ${W} ${H}" role="group" aria-label="מפת אשכולות">${dots}${shapes}</svg>`;
+  return `<svg class="cmap" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="group" aria-label="מפת אשכולות">${dots}${shapes}</svg>`;
 }
 
 function updateMapCounts() {
@@ -1036,19 +1150,15 @@ function updateMapCounts() {
 }
 
 function renderHome() {
-  const scan = clusters.length ? `
+  if (!clusters.length) { $results.innerHTML = ''; return; }
+  $results.innerHTML = `
     <div class="scan">
-      <label for="cnum">סריקת אשכול צח"י</label>
-      <div class="scan-row">
-        <input id="cnum" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="מספר אשכול" autocomplete="off" enterkeyhint="go">
-        <button id="cgo" type="button">פתיחה</button>
-      </div>
-      <div id="cmsg" role="alert"></div>
+      <label for="cnum">אשכול צח"י</label>
+      <input id="cnum" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="מספר" autocomplete="off" enterkeyhint="go">
+      <button id="cgo" type="button">פתיחה</button>
     </div>
-    <div class="cmap-title">או לחצו על אשכול במפה:</div>
-    ${mapSvg()}` : '';
-  $results.innerHTML = '<p class="home-hint">לחיפוש: הקלידו מספר איתור, שם משפחה או טלפון'
-    + ($mic.hidden ? '' : ', או לחצו על המיקרופון') + '</p>' + scan;
+    <div id="cmsg" role="alert"></div>
+    <div class="cmap-wrap"><span class="cmap-cap">לחצו על אשכול</span>${mapSvg()}</div>`;
   updateMapCounts();
 }
 
@@ -1100,7 +1210,9 @@ function showCluster(cid) {
   const c = clusters.find(x => x.id === cid);
   curCluster = cid;
   $cvTitle.textContent = 'אשכול ' + cid + (c.label ? ' – ' + c.label : '');
-  $cvHead.style.borderBottomColor = /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : '';
+  const col = /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : '#607d8b';
+  $cvHead.style.background = col;
+  $cvHead.classList.toggle('light', isLight(col));
   $cv.hidden = false;
   document.body.classList.add('cv-open');
   $cv.scrollTop = 0;
@@ -1115,6 +1227,13 @@ function showCluster(cid) {
   }, POLL_MS);
 }
 
+function isLight(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const lin = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+  const L = .2126 * lin(n >> 16 & 255) + .7152 * lin(n >> 8 & 255) + .0722 * lin(n & 255);
+  return L > .3;   // צבע בהיר → טקסט כהה
+}
+
 function hideCluster() {
   curCluster = null;
   clearInterval(pollTimer);
@@ -1123,6 +1242,11 @@ function hideCluster() {
   scheduleFlush(50);
   if (!norm($q.value)) { renderHome(); refreshSummary(); }
 }
+
+function miniTel(num, label) {
+  return `<a class="mtel" href="tel:+972${num.replace(/^0/, '')}" aria-label="התקשרות ל${esc(label)}">${ICON_PHONE}<span>${esc(label)}</span></a>`;
+}
+function fitNote(ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight + 2, 160) + 'px'; }
 
 function renderCluster() {
   const items = clusterItems(curCluster);
@@ -1137,16 +1261,14 @@ function renderCluster() {
       html += '<div class="cv-sep">ללא מספר איתור (מבני ציבור ועוד)</div>';
       sepDone = true;
     }
-    const tels = [];
-    if (p.pm) tels.push(`<a class="mtel" href="tel:+972${p.pm.replace(/^0/, '')}">${ICON_PHONE}${esc(p.nm || 'בעל')}</a>`);
-    if (p.pw) tels.push(`<a class="mtel" href="tel:+972${p.pw.replace(/^0/, '')}">${ICON_PHONE}${esc(p.nw || 'אישה')}</a>`);
+    const t1 = p.pm ? miniTel(p.pm, p.nm || 'בעל') : (p.pw ? miniTel(p.pw, p.nw || 'אישה') : '');
+    const t2 = p.pm && p.pw ? miniTel(p.pw, p.nw || 'אישה') : '';
     html += `<div class="srow" data-k="${esc(recKey(p))}">
       <label class="chk"><input type="checkbox" aria-label="נסרק – ${esc(p.name)}"><span></span></label>
-      <div class="who">
-        <div class="who-top"><b>${esc(p.name)}</b>${p.loc ? `<small>איתור ${esc(p.loc)}</small>` : ''}<em class="when"></em></div>
-        ${tels.length ? `<div class="mtels">${tels.join('')}</div>` : ''}
-        <textarea class="note" rows="1" maxlength="500" placeholder="פירוט מצב המשפחה…" aria-label="הערה – ${esc(p.name)}"></textarea>
-      </div>
+      <div class="who-top"><b>${esc(p.name)}</b>${p.loc ? `<small>${esc(p.loc)}</small>` : ''}<em class="when"></em></div>
+      <textarea class="note" rows="1" maxlength="500" placeholder="פירוט מצב…" aria-label="הערה – ${esc(p.name)}"></textarea>
+      ${t1 ? t1.replace('class="mtel"', 'class="mtel t1"') : ''}
+      ${t2 ? t2.replace('class="mtel"', 'class="mtel t2"') : ''}
     </div>`;
   }
   $cvList.innerHTML = html;
@@ -1162,9 +1284,9 @@ function refreshRows() {
     cb.checked = !!v.s;
     row.classList.toggle('done', !!v.s);
     row.querySelector('.when').textContent = v.s && v.t
-      ? 'נסרק ' + new Date(v.t).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '';
+      ? '✓ ' + new Date(v.t).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '';
     const ta = row.querySelector('.note');
-    if (document.activeElement !== ta && ta.value !== (v.n || '')) ta.value = v.n || '';
+    if (document.activeElement !== ta && ta.value !== (v.n || '')) { ta.value = v.n || ''; fitNote(ta); }
   });
   updateProgress();
 }
@@ -1186,6 +1308,7 @@ const noteTimers = {};
 $cvList.addEventListener('input', e => {
   if (!e.target.classList.contains('note') || !curCluster) return;
   const k = e.target.closest('.srow').dataset.k, cid = curCluster, ta = e.target;
+  fitNote(ta);
   clearTimeout(noteTimers[k]);
   noteTimers[k] = setTimeout(() => queueOp(cid, k, { n: ta.value }), 700);
 });
