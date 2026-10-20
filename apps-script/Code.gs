@@ -9,10 +9,10 @@
  *   Who has access: Anyone
  * את כתובת ה-/exec שומרים ב-GitHub כ-Secret בשם SCAN_API.
  *
- * TOKEN = SHA-256 של הסיסמה הקהילתית (אחרי נרמול) + "|yatir-scan".
- * כשמחליפים סיסמה באתר – צריך לעדכן גם כאן (ראו README) ולפרוס גרסה חדשה.
+ * הטוקן לא כתוב בקוד: הוא שמור ב-Script Properties תחת המפתח TOKEN
+ * (Project Settings ← Script Properties), ובאתר הוא נמצא רק בתוך הקובץ המוצפן (Secret בשם SCAN_TOKEN).
+ * החלפת הסיסמה הקהילתית לא מחייבת שינוי כאן.
  */
-const TOKEN = 'ac1fbb596fc590f9bc431597fd35d4f22ab75ba1a4aee1c5778414ed1c525f5a';
 const TTL_MS = 24 * 3600 * 1000;
 const MAX_NOTE = 500;
 const MAX_KEY = 80;
@@ -28,8 +28,9 @@ function doPost(e) {
 }
 
 function handle_(p) {
-  if (p.t !== TOKEN) return out_({ ok: false, err: 'auth' });
   const props = PropertiesService.getScriptProperties();
+  const token = props.getProperty('TOKEN');
+  if (!token || typeof p.t !== 'string' || p.t !== token) return out_({ ok: false, err: 'auth' });
   const now = Date.now();
 
   if (p.a === 'summary') {
@@ -112,7 +113,7 @@ function cleanup() {
 
 /** בדיקה מהעורך: כותב, קורא ומנקה אשכול בדיקה 999. */
 function selfTest() {
-  const t = TOKEN;
+  const t = PropertiesService.getScriptProperties().getProperty('TOKEN');
   Logger.log(JSON.parse(handle_({ t: t, a: 'set', cl: '999', ops: [{ k: 'x', s: true, n: 'בדיקה' }] }).getContent()));
   Logger.log(JSON.parse(handle_({ t: t, a: 'get', cl: '999' }).getContent()));
   Logger.log(JSON.parse(handle_({ t: t, a: 'clear', cl: '999' }).getContent()));

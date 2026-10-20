@@ -21,6 +21,8 @@
     --call: #1e8e3e;
     --danger: #b3261e;
     --rec: #d93025;
+    --done-bg: #e6f3e9;
+    --done-border: #9fd0aa;
     --radius: 16px;
   }
   @media (prefers-color-scheme: dark) {
@@ -35,6 +37,8 @@
       --gmaps: #5b9cf5;
       --call: #34a853;
       --danger: #f2b8b5;
+      --done-bg: #1d3325;
+      --done-border: #2f6b41;
     }
   }
   * { box-sizing: border-box; }
@@ -347,7 +351,10 @@
     padding: 12px;
     margin-bottom: 10px;
   }
+  .srow.done { background: var(--done-bg); border-color: var(--done-border); }
+  @supports (background: color-mix(in srgb, red 50%, blue)) {
   .srow.done { background: color-mix(in srgb, var(--call) 12%, var(--surface)); border-color: color-mix(in srgb, var(--call) 45%, var(--border)); }
+  }
   .chk { flex: none; cursor: pointer; padding: 2px; }
   .chk input { position: absolute; opacity: 0; width: 1px; height: 1px; }
   .chk span {
@@ -649,19 +656,21 @@ function search(q) {
   const nq = norm(q);
   if (!nq) return [];
   const tokens = nq.split(' ');
-  const isNum = /^\d+$/.test(nq);
+  const compact = nq.replace(/ /g, '');          // '052 123 4567' (אחרי norm) -> '0521234567'
+  const isNum = /^\d+$/.test(compact);
+  const num = isNum ? compact : '';
   const sq = nq.split(' ').map(skelWord).join(' ');
   const sTokens = nq.replace(/\d/g, '').trim().length >= 2 ? sq.split(' ').filter(Boolean) : [];
   const out = [];
   for (const p of places) {
     let score = 0;
     if (isNum) {
-      if (p.loc === nq) score = 100;
-      else if (p.loc.startsWith(nq)) score = 70;
-      else if (p.cluster === nq) score = 30;
-      else if (new RegExp('(^| )' + nq + '( |$)').test(p.nName)) score = 25;
-      else if (nq.length >= 5 && p.phones.includes(nq.replace(/^972/, '0'))) score = 50;
-      else if (p.loc.includes(nq)) score = 15;
+      if (p.loc === num) score = 100;
+      else if (p.loc.startsWith(num)) score = 70;
+      else if (num.length >= 5 && p.phones.includes(num.replace(/^972/, '0'))) score = 50;
+      else if (p.cluster === num) score = 30;
+      else if (new RegExp('(^| )' + num + '( |$)').test(p.nName)) score = 25;
+      else if (p.loc.includes(num)) score = 15;
     } else if (tokens.every(t => p.hay.includes(t))) {
       score = 40;
       if (p.nName.startsWith(nq)) score = 80;
@@ -780,8 +789,8 @@ $results.addEventListener('click', async e => {
     if (navigator.share) await navigator.share({ title, text: title + ', בית יתיר', url });
     else {
       await navigator.clipboard.writeText(title + '\n' + url);
-      b.textContent = 'הועתק';
-      setTimeout(() => { b.textContent = 'שיתוף'; }, 1500);
+      b.textContent = '✓';
+      setTimeout(() => { b.innerHTML = ICON_SHARE; }, 1500);
     }
   } catch (_) { /* בוטל */ }
 });
@@ -883,6 +892,7 @@ let scanSummary = {};
 let curCluster = null;
 let pollTimer = null, summaryTimer = null, flushTimer = null;
 let flushing = false;
+let writeSeq = 0;      // עולה בכל שמירה/ניקוי מוצלחים; קריאה ישנה מזה לא דורסת מצב
 let lastSync = 0;
 let openedByPush = false;
 
@@ -918,11 +928,10 @@ async function sha256hex(s) {
 
 async function setupScan(data) {
   clusters = (data.clusters || []).map(c => Object.assign({}, c, { id: String(c.id) }));
-  scanApi = data.api || '';
+  scanToken = data.tok || '';
+  scanApi = scanToken ? (data.api || '') : '';   // בלי טוקן – מצב מקומי בלבד
   scanState = pruneState(lsGet(SCAN_STATE_KEY, {}));
   scanQueue = lsGet(SCAN_QUEUE_KEY, []).filter(op => Date.now() - (op.t || 0) < SCAN_TTL);
-  const pass = getSavedPass();
-  if (pass) scanToken = await sha256hex(pass + '|yatir-scan');
   if (scanQueue.length) scheduleFlush(500);
   refreshSummary();
   clearInterval(summaryTimer);
@@ -1037,6 +1046,7 @@ async function flush() {
         return o;
       });
       const j = await apiPost({ a: 'set', cl: c, ops: ops });
+      writeSeq++;
       scanState[c] = j.st || {};
       // מוחקים מהתור רק שינויים שלא נערכו שוב בזמן השליחה
       scanQueue = scanQueue.filter(op => !byC[c].some(x => x.ref === op && x.t === op.t));
@@ -1056,8 +1066,10 @@ async function flush() {
 
 async function pullCluster(cid) {
   if (!scanApi || flushing) return;
+  const seq = writeSeq;
   try {
     const j = await apiGet({ a: 'get', cl: cid });
+    if (seq !== writeSeq || flushing) return;   // בזמן הקריאה נשמר משהו – התשובה הזאת כבר ישנה
     scanState[cid] = j.st || {};
     lastSync = Date.now();
     saveScan();
@@ -1286,7 +1298,8 @@ function refreshRows() {
     row.querySelector('.when').textContent = v.s && v.t
       ? '✓ ' + new Date(v.t).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '';
     const ta = row.querySelector('.note');
-    if (document.activeElement !== ta && ta.value !== (v.n || '')) { ta.value = v.n || ''; fitNote(ta); }
+    const editing = document.activeElement === ta && ta.dataset.dirty === '1';
+    if (!editing && ta.value !== (v.n || '')) { ta.value = v.n || ''; fitNote(ta); }
   });
   updateProgress();
 }
@@ -1308,16 +1321,23 @@ const noteTimers = {};
 $cvList.addEventListener('input', e => {
   if (!e.target.classList.contains('note') || !curCluster) return;
   const k = e.target.closest('.srow').dataset.k, cid = curCluster, ta = e.target;
+  ta.dataset.dirty = '1';
   fitNote(ta);
   clearTimeout(noteTimers[k]);
-  noteTimers[k] = setTimeout(() => queueOp(cid, k, { n: ta.value }), 700);
+  noteTimers[k] = setTimeout(() => { queueOp(cid, k, { n: ta.value }); delete ta.dataset.dirty; }, 700);
 });
 $cvList.addEventListener('focusout', e => {
   if (!e.target.classList.contains('note') || !curCluster) return;
   const k = e.target.closest('.srow').dataset.k;
   clearTimeout(noteTimers[k]);
-  const cur = (stateFor(curCluster)[k] || {}).n || '';
-  if (e.target.value !== cur) queueOp(curCluster, k, { n: e.target.value });
+  // רק אם הקלידו בשדה הזה – אחרת יציאה משדה ריק הייתה מוחקת הערה של סורק אחר
+  if (e.target.dataset.dirty === '1') {
+    delete e.target.dataset.dirty;
+    const cur = (stateFor(curCluster)[k] || {}).n || '';
+    if (e.target.value !== cur) queueOp(curCluster, k, { n: e.target.value });
+  } else {
+    refreshRows();   // מציג מיד הערה שהתעדכנה מבחוץ בזמן שהסמן היה בשדה
+  }
 });
 
 /* סיכום לוואטסאפ */
@@ -1355,13 +1375,21 @@ $cvClear.addEventListener('click', async () => {
   scanQueue = scanQueue.filter(op => op.c !== cid);
   if (scanApi) {
     setSync('saving');
+    clearTimeout(flushTimer);
+    for (let i = 0; flushing && i < 100; i++) await new Promise(r => setTimeout(r, 100));
+    scanQueue = scanQueue.filter(op => op.c !== cid);
+    flushing = true;   // חוסם שמירות וקריאות עד שהניקוי חוזר
     try {
       const j = await apiPost({ a: 'clear', cl: cid });
+      writeSeq++;
       scanState[cid] = j.st || {};
       lastSync = Date.now();
       setSync('ok');
     } catch (err) {
       setSync(err.message === 'auth' ? 'auth' : 'error', ' (הניקוי לא בוצע)');
+    } finally {
+      flushing = false;
+      if (scanQueue.length) scheduleFlush(300);
     }
   } else {
     scanState[cid] = {};
@@ -1386,7 +1414,7 @@ function saveCache(data) {
 }
 // סיסמה סלחנית: בלי רווחים, ואותיות סופיות כרגילות ("שלום עולם" = "שלומעולמ")
 function normPass(s) {
-  return String(s || '').replace(/\s+/g, '').replace(/[ךםןףץ]/g, c => FINALS[c]);
+  return String(s || '').replace(/[\s\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]+/g, '').replace(/[ךםןףץ]/g, c => FINALS[c]);
 }
 function getSavedPass() {
   try {

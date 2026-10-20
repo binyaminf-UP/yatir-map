@@ -34,6 +34,17 @@ TAGS = re.compile(r"<[^>]+>")
 RE_LOC = re.compile(r"איתור\s*:?\s*(\d+)")
 RE_CLUSTER = re.compile(r"אשכול\s*:?\s*(\d+)")
 TITLES = {"הרב", "ד\"ר", "דר"}
+# שמות שמתחילים ב-ו' – לא לחתוך מהם "ו' החיבור" ("כהן אבי ורד" = אבי וורד)
+VAV_NAMES = {"ורד", "ורדה", "ורדית", "ויקטוריה", "ויקטור", "ולדימיר", "ויטלי", "ואדים", "ולרי", "ולריה", "ויולט"}
+
+
+def strip_vav(t: str) -> str:
+    """'ומיכל' -> 'מיכל', 'וורד' -> 'ורד', אבל 'ורד' נשאר 'ורד'."""
+    if t.startswith("וו") and len(t) > 2:
+        return t[1:]
+    if t.startswith("ו") and len(t) > 2 and t not in VAV_NAMES:
+        return t[1:]
+    return t
 
 
 def fail(msg: str) -> None:
@@ -241,8 +252,7 @@ def split_family(s: str):
     toks = name_tokens(s)
     if not toks:
         return "", []
-    given = [t[1:] if (i > 0 and t.startswith("ו") and len(t) > 2) else t
-             for i, t in enumerate(toks[1:])]
+    given = [strip_vav(t) if i > 0 else t for i, t in enumerate(toks[1:])]
     return toks[0], given
 
 
@@ -282,21 +292,24 @@ def load_phones(raw: bytes) -> list:
     return out
 
 
-def match_tokens(s: str) -> list:
+def match_tokens(s: str):
     """מילים להשוואה: מפרקים מקפים וסוגריים, מורידים ו' החיבור ותארים.
-    מחזיר זוגות (מילה מנורמלת, שלד). 'בן- גדליהו צבי ודבי' = 'בן גדליהו צבי ודבי'."""
+    מחזיר (רשימת זוגות (מילה מנורמלת, שלד), כמה מהמילים הראשונות הן שם המשפחה).
+    'בזיז-רפאל אבי ובתיה' -> שם המשפחה הוא שתי המילים הראשונות."""
     s = re.sub(r"[()\"'׳״]", " ", clean(s)).replace("–", "-")
-    out = []
-    for i, t in enumerate(re.split(r"[\s\-]+", s)):
-        if not t or t in TITLES:
-            continue
-        if t.startswith("וו"):                       # וורך / ורך
-            t = t[1:]
-        elif i > 0 and t.startswith("ו") and len(t) > 2:
-            t = t[1:]
-        t = t.translate(FINALS_MAP)
-        out.append((t, skeleton(t)))
-    return out
+    s = re.sub(r"\s*-\s*", "-", s).strip()
+    out, sur = [], 0
+    for chunk in s.split(" "):
+        for t in [x for x in chunk.split("-") if x]:
+            if t in TITLES:
+                continue
+            if out:
+                t = strip_vav(t)
+            t = t.translate(FINALS_MAP)
+            out.append((t, skeleton(t)))
+        if out and not sur:
+            sur = len(out)
+    return out, sur
 
 
 FINALS_MAP = str.maketrans("ךםןףץ", "כמנפצ")
@@ -311,39 +324,43 @@ def skeleton(t: str) -> str:
     return s if len(s) >= 2 else t
 
 
-def common_tokens(mt: list, pt: list):
-    """סופר מילים משותפות. מילה זהה – תמיד נספרת. התאמה לפי שלד בלבד נספרת רק אם השלד
-    באורך 3 ומעלה, או ששתיהן המילה הראשונה (שם המשפחה) – כדי ש'בן'/'הבן' או 'חן'/'אוחנה'
-    לא ייצרו התאמות שגויות."""
-    used, mi, pj = set(), set(), set()
+def common_tokens(mt: list, pt: list, ms_n: int = 1, ps_n: int = 1):
+    """סופר מילים משותפות ובודק אם שמות המשפחה תואמים.
+    מילה זהה – תמיד נספרת. התאמה לפי שלד בלבד נספרת רק אם השלד באורך 3 ומעלה, או ששתיהן
+    בעמדת שם המשפחה – כדי ש'בן'/'הבן' או 'חן'/'אוחנה' לא ייצרו התאמות שגויות.
+    מחזיר (מספר מילים משותפות, האם יש מילה משותפת שהיא שם משפחה בשני הצדדים)."""
+    used, n, sur = set(), 0, False
     for i, (mw, ms) in enumerate(mt):
         for j, (pw, ps) in enumerate(pt):
             if j in used:
                 continue
-            if mw == pw or (ms == ps and (len(ms) >= 3 or (i == 0 and j == 0))):
+            both_sur = i < ms_n and j < ps_n
+            if mw == pw or (ms == ps and (len(ms) >= 3 or both_sur)):
                 used.add(j)
-                mi.add(i)
-                pj.add(j)
+                n += 1
+                sur = sur or both_sur
                 break
-    return len(mi), (0 in mi or 0 in pj)
+    return n, sur
 
 
 def attach_phones(items: list, phones: list):
     """מצמיד לכל רשומת מפה את שורת הטלפונים המתאימה.
-    התאמה = לפחות שתי מילים משותפות, ואחת מהן היא המילה הראשונה (שם המשפחה) באחד הצדדים.
-    כך 'רפאל אבי ובתיה' מתאים ל-'בזיז-רפאל אבי בתיה', אבל 'לוין יוסף' לא מתאים ל-'לוין צבי'."""
+    התאמה = (שם משפחה תואם + לפחות 2 מילים משותפות) או (לפחות 3 מילים משותפות).
+    שם ממוקף ('בזיז-רפאל') נחשב כולו שם משפחה.
+    כך 'רפאל אבי' מתאים ל-'בזיז-רפאל אבי ובתיה', 'משה ורננה בר ששת' ל-'בר ששת משה ורננה',
+    אבל 'דוד משה ורחל' לא מתאים ל-'כהן דוד ורחל', ו-'לוין יוסף' לא ל-'לוין צבי'."""
     ptoks = [match_tokens(p["fam"]) for p in phones]
     used = set()
     for it in items:
-        mt = match_tokens(it["n"])
+        mt, msur = match_tokens(it["n"])
         if not mt:
             continue
         best, best_score = None, 0
-        for idx, pt in enumerate(ptoks):
+        for idx, (pt, psur) in enumerate(ptoks):
             if not pt:
                 continue
-            n_common, has_first = common_tokens(mt, pt)
-            if n_common < 2 or not has_first:
+            n_common, sur_match = common_tokens(mt, pt, msur, psur)
+            if not ((sur_match and n_common >= 2) or n_common >= 3):
                 continue
             score = n_common * 10 - abs(len(mt) - len(pt))
             if score > best_score:
@@ -385,7 +402,7 @@ def encrypt(payload: bytes, password: str) -> dict:
 def main() -> None:
     layers = {clean(x) for x in os.environ.get("LAYERS", "").split("|") if x.strip()}
     # אותו נרמול כמו בדפדפן: בלי רווחים ותווים נסתרים, ואותיות סופיות כרגילות
-    password = re.sub(r"[\s﻿‎‏]", "", os.environ.get("SITE_PASSWORD", ""))
+    password = re.sub(r"[\s\ufeff\u200b-\u200f\u202a-\u202e\u2066-\u2069]", "", os.environ.get("SITE_PASSWORD", ""))
     password = password.translate(str.maketrans("ךםןףץ", "כמנפצ"))
     if not layers:
         fail("חסרה רשימת שכבות (LAYERS)")
@@ -420,6 +437,9 @@ def main() -> None:
     api = os.environ.get("SCAN_API", "").strip()
     if re.fullmatch(r"https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec", api):
         payload["api"] = api   # כתובת שרת הסריקות – רק בתוך הקובץ המוצפן
+    tok = os.environ.get("SCAN_TOKEN", "").strip()
+    if re.fullmatch(r"[0-9a-f]{32,128}", tok):
+        payload["tok"] = tok   # טוקן אקראי לשרת – לא נגזר מהסיסמה
     plain = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
     digest = hashlib.sha256(plain).hexdigest()
 
@@ -437,7 +457,7 @@ def main() -> None:
     print(f"רשומות במפה: {len(items) - len(extra)} | שורות טלפונים: {n_phones} | "
           f"הותאמו: {matched} | נוספו ללא מיקום: {len(extra)} | "
           f"אשכולות: {len(clusters)} (שויכו לפי מיקום: {n_assigned}) | "
-          f"שרת סריקות: {'מחובר' if 'api' in payload else 'לא מוגדר'} | "
+          f"שרת סריקות: {'מחובר' if 'api' in payload and 'tok' in payload else 'לא מוגדר'} | "
           f"{'יש שינוי' if changed else 'אין שינוי'}")
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if gh_out:
