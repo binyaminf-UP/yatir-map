@@ -45,7 +45,8 @@ function handle_(p) {
     return out_({ ok: true, summary: res, now: now });
   }
 
-  const c = String(p.c || '').replace(/\D/g, '').slice(0, 3);
+  // 'c' שמור אצל גוגל בפרמטרים של כתובת – משתמשים ב-'cl'
+  const c = String(p.cl || p.c || '').replace(/\D/g, '').slice(0, 3);
   if (!c) return out_({ ok: false, err: 'cluster' });
 
   if (p.a === 'get' || !p.a) {
@@ -112,8 +113,8 @@ function cleanup() {
 /** בדיקה מהעורך: כותב, קורא ומנקה אשכול בדיקה 999. */
 function selfTest() {
   const t = TOKEN;
-  Logger.log(JSON.parse(handle_({ t: t, a: 'set', c: '999', ops: [{ k: 'x', s: true, n: 'בדיקה' }] }).getContent()));
-  Logger.log(JSON.parse(handle_({ t: t, a: 'get', c: '999' }).getContent()));
-  Logger.log(JSON.parse(handle_({ t: t, a: 'clear', c: '999' }).getContent()));
-  Logger.log(JSON.parse(handle_({ t: 'wrong', a: 'get', c: '999' }).getContent()));
+  Logger.log(JSON.parse(handle_({ t: t, a: 'set', cl: '999', ops: [{ k: 'x', s: true, n: 'בדיקה' }] }).getContent()));
+  Logger.log(JSON.parse(handle_({ t: t, a: 'get', cl: '999' }).getContent()));
+  Logger.log(JSON.parse(handle_({ t: t, a: 'clear', cl: '999' }).getContent()));
+  Logger.log(JSON.parse(handle_({ t: 'wrong', a: 'get', cl: '999' }).getContent()));
 }

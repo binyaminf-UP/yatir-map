@@ -1036,7 +1036,7 @@ async function flush() {
         if ('n' in x.ref) o.n = x.ref.n;
         return o;
       });
-      const j = await apiPost({ a: 'set', c: c, ops: ops });
+      const j = await apiPost({ a: 'set', cl: c, ops: ops });
       scanState[c] = j.st || {};
       // מוחקים מהתור רק שינויים שלא נערכו שוב בזמן השליחה
       scanQueue = scanQueue.filter(op => !byC[c].some(x => x.ref === op && x.t === op.t));
@@ -1057,7 +1057,7 @@ async function flush() {
 async function pullCluster(cid) {
   if (!scanApi || flushing) return;
   try {
-    const j = await apiGet({ a: 'get', c: cid });
+    const j = await apiGet({ a: 'get', cl: cid });
     scanState[cid] = j.st || {};
     lastSync = Date.now();
     saveScan();
@@ -1356,7 +1356,7 @@ $cvClear.addEventListener('click', async () => {
   if (scanApi) {
     setSync('saving');
     try {
-      const j = await apiPost({ a: 'clear', c: cid });
+      const j = await apiPost({ a: 'clear', cl: cid });
       scanState[cid] = j.st || {};
       lastSync = Date.now();
       setSync('ok');
